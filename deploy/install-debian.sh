@@ -25,7 +25,7 @@ if [ ! -f .env ]; then
     echo "    AVISO: .env não existe. Crie a partir de .env.example ou .env.production.example."
   fi
 fi
-npm ci --omit=dev
+npm ci
 npx prisma generate
 npm run build
 echo "    Backend build concluído."

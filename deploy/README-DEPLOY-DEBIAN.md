@@ -5,7 +5,7 @@ Este guia descreve como colocar o **Gestor de Tarefas** em produção num servid
 ## Visão geral
 
 - **Nginx**: reverse proxy; serve o frontend estático e encaminha `/api` para o backend.
-- **Backend**: aplicação Node.js (Express) em `backend/`, roda como serviço systemd na porta 3001 (só local).
+- **Backend**: aplicação Node.js (Express) em `backend/`, roda como serviço systemd na porta 3031 (só local).
 - **Frontend**: build estático (Vite/React) em `frontend/dist`, servido pelo Nginx.
 - **Banco**: MariaDB no próprio servidor (ou acessível via rede).
 
@@ -76,9 +76,9 @@ Ou copiar o projeto por rsync/scp e depois ajustar caminhos nos ficheiros de dep
 cd /var/www/gestor-de-tarefas/backend
 cp .env.production.example .env
 nano .env   # editar DATABASE_URL, JWT_SECRET, CORS_ORIGIN
-npm ci --omit=dev
-npm run build
+npm ci
 npx prisma generate
+npm run build
 npx prisma migrate deploy   # ou, se não tiver migrações versionadas: npx prisma db push
 npm run db:seed             # se quiser usuário admin inicial
 ```
@@ -87,7 +87,7 @@ Testar localmente:
 
 ```bash
 node dist/server.js
-# Aceder a http://localhost:3001/api/health
+# Aceder a http://localhost:3031/api/health
 # Ctrl+C para parar
 ```
 
@@ -196,7 +196,7 @@ sudo chmod 640 /var/www/gestor-de-tarefas/backend/.env
 |-------------|---------------------------------|
 | Site (SPA)  | `http://SEU_IP` ou `https://seu-dominio` |
 | API         | `http://SEU_IP/api` ou `https://seu-dominio/api` |
-| Backend direto (local) | `http://127.0.0.1:3001` (só no servidor) |
+| Backend direto (local) | `http://127.0.0.1:3031` (só no servidor) |
 
 ---
 
@@ -222,7 +222,7 @@ CORS_ORIGIN="https://tarefas.seudominio.com"
 ```bash
 cd /var/www/gestor-de-tarefas
 git pull
-cd backend && npm ci --omit=dev && npm run build && sudo systemctl restart gestor-backend
+cd backend && npm ci && npx prisma generate && npm run build && sudo systemctl restart gestor-backend
 cd ../frontend && npm ci && npm run build
 sudo systemctl reload nginx
 ```

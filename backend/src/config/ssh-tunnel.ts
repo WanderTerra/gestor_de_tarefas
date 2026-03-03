@@ -47,6 +47,7 @@ export async function createSSHTunnel(): Promise<void> {
     sshClient = new Client();
 
     sshClient.on('ready', () => {
+      const client = sshClient!;
       console.log('🔑 Conexão SSH estabelecida.');
 
       // Criar servidor TCP local que encaminha para o banco via SSH
@@ -92,7 +93,7 @@ export async function createSSHTunnel(): Promise<void> {
       });
 
       // Manter túnel vivo - reconectar se desconectar
-      sshClient.on('close', () => {
+      client.on('close', () => {
         if (isReconnecting) {
           return; // Já está tentando reconectar
         }
@@ -103,7 +104,6 @@ export async function createSSHTunnel(): Promise<void> {
           tunnelServer.close();
           tunnelServer = null;
         }
-        const oldClient = sshClient;
         sshClient = null;
         
         // Tentar reconectar após 5 segundos
@@ -126,7 +126,7 @@ export async function createSSHTunnel(): Promise<void> {
         }, 5000);
       });
 
-      sshClient.on('end', () => {
+      client.on('end', () => {
         console.warn('⚠️  Conexão SSH encerrada pelo servidor.');
       });
     });

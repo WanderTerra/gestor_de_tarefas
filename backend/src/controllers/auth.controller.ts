@@ -52,7 +52,7 @@ export const authController = {
   },
 
   /** Listar solicitações pendentes (apenas gestores) */
-  async getPendingRequests(req: Request, res: Response, next: NextFunction) {
+  async getPendingRequests(_req: Request, res: Response, next: NextFunction) {
     try {
       const requests = await authService.getPendingRequests();
       res.json(requests);
