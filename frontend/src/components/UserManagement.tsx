@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2, AlertCircle, UserPlus, ArrowLeft, LayoutDashboard, Shield, LogOut, CheckCircle2, FileText, CalendarCheck, ClipboardList } from 'lucide-react';
-import { User } from '@/types/user';
+import { User, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,7 +27,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<string>('employee');
+  const [role, setRole] = useState<string>('backoffice');
 
   const fetchUsers = async () => {
     try {
@@ -49,7 +49,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
     setUsername('');
     setPassword('');
     setName('');
-    setRole('employee');
+    setRole('backoffice');
   };
 
   const handleCreate = async () => {
@@ -216,11 +216,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
               <Badge 
                 variant="outline"
                 style={{
-                  background: 'rgba(96, 165, 250, 0.12)',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   backdropFilter: 'blur(12px)',
                   WebkitBackdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(96, 165, 250, 0.25)',
-                  color: 'rgba(37, 99, 235, 0.75)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: 'rgba(37, 99, 235, 0.6)',
+                  boxShadow: `
+                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                    0 0 8px 0 rgba(37, 99, 235, 0.15)
+                  `,
                 }}
               >
                 {users.length} usuário{users.length !== 1 ? 's' : ''}
@@ -228,7 +237,33 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
             </div>
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
               <DialogTrigger asChild>
-                <Button className="gap-2 bg-slate-800 hover:bg-slate-700 text-white">
+                <Button
+                  size="default"
+                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
+                    backdropFilter: 'blur(12px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: 'rgba(15, 23, 42, 0.9)',
+                    boxShadow: `
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                      inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                      inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                      0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                      0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                    `,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                  }}
+                >
                   <UserPlus className="w-4 h-4" />
                   Novo Usuário
                 </Button>
@@ -273,8 +308,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="employee">Funcionário</SelectItem>
-                        <SelectItem value="manager">Gestor</SelectItem>
+                        <SelectItem value="adm">Adm</SelectItem>
+                        <SelectItem value="backoffice">Backoffice</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                        <SelectItem value="financeiro">Financeiro</SelectItem>
+                        <SelectItem value="rh">RH</SelectItem>
+                        <SelectItem value="monitor">Monitor</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -368,20 +407,27 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                       <Badge 
                         variant="outline" 
                         style={{
-                          background: user.role === 'manager' 
-                            ? 'rgba(167, 139, 250, 0.12)' 
-                            : 'rgba(96, 165, 250, 0.12)',
+                          background: 'rgba(255, 255, 255, 0.1)',
                           backdropFilter: 'blur(12px)',
                           WebkitBackdropFilter: 'blur(12px)',
-                          border: user.role === 'manager'
-                            ? '1px solid rgba(167, 139, 250, 0.25)'
-                            : '1px solid rgba(96, 165, 250, 0.25)',
-                          color: user.role === 'manager' 
-                            ? 'rgba(109, 40, 217, 0.75)' 
-                            : 'rgba(37, 99, 235, 0.75)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: isManagerRole(user.role)
+                            ? 'rgba(109, 40, 217, 0.6)' 
+                            : 'rgba(37, 99, 235, 0.6)',
+                          boxShadow: `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                            0 0 8px 0 ${isManagerRole(user.role)
+                              ? 'rgba(109, 40, 217, 0.15)' 
+                              : 'rgba(37, 99, 235, 0.15)'}
+                          `,
                         }}
                       >
-                        {user.role === 'manager' ? 'Gestor' : 'Funcionário'}
+                        {getRoleLabel(user.role)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -392,13 +438,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                       <Badge 
                         variant="outline"
                         style={{
-                          background: user.active 
-                            ? 'rgba(74, 222, 128, 0.12)' 
-                            : 'rgba(148, 163, 184, 0.12)',
+                          background: 'rgba(255, 255, 255, 0.1)',
                           backdropFilter: 'blur(12px)',
                           WebkitBackdropFilter: 'blur(12px)',
-                          border: `1px solid ${user.active ? 'rgba(74, 222, 128, 0.25)' : 'rgba(148, 163, 184, 0.25)'}`,
-                          color: user.active ? 'rgba(22, 101, 52, 0.75)' : 'rgba(71, 85, 105, 0.75)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: user.active ? 'rgba(22, 101, 52, 0.6)' : 'rgba(71, 85, 105, 0.6)',
+                          boxShadow: `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                            0 0 8px 0 ${user.active 
+                              ? 'rgba(22, 101, 52, 0.15)' 
+                              : 'rgba(71, 85, 105, 0.15)'}
+                          `,
                         }}
                       >
                         {user.active ? 'Ativo' : 'Inativo'}
@@ -407,6 +462,29 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                         variant="outline"
                         size="sm"
                         onClick={() => toggleActive(user)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          backdropFilter: 'blur(12px) saturate(180%)',
+                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: 'rgba(15, 23, 42, 0.8)',
+                          boxShadow: `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                            0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                          `,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                        }}
                       >
                         {user.active ? 'Desativar' : 'Ativar'}
                       </Button>

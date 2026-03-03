@@ -11,19 +11,23 @@ import {
   Plus, Clock, Loader2, AlertCircle, RefreshCw,
   LogOut, Pencil, Trash2, Bell, XIcon,
   LayoutDashboard, Shield, CalendarCheck, Repeat, UserCircle, AlertTriangle,
-  BadgeCheck, Users, FileSearch, ClipboardCheck,
+  BadgeCheck, Users, FileSearch, ClipboardCheck, UserPlus,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
-import { User } from '@/types/user';
+import { User, getRoleLabel } from '@/types/user';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { userApi, overdueApi, OverdueAlert } from '@/services/api';
+import { userApi, overdueApi, OverdueAlert, authApi } from '@/services/api';
 import LoginPage from '@/components/LoginPage';
+import RegisterPage from '@/components/RegisterPage';
+import PendingApprovalPage from '@/components/PendingApprovalPage';
+import RejectedPage from '@/components/RejectedPage';
 import UserManagement from '@/components/UserManagement';
 import AuditLogView from '@/components/AuditLogView';
 import EditTaskDialog from '@/components/EditTaskDialog';
 import CompletedTasksPage from '@/components/CompletedTasksPage';
+import AuthorizationRequestsPage from '@/components/AuthorizationRequestsPage';
 import type { Task } from '@/types/task';
 
 /** Troféu 3D em acrílico translúcido branco */
@@ -202,10 +206,11 @@ const getStatusColorRGB = (status: TaskStatus): string => {
   return colorMap[status] || '148, 163, 184';
 };
 
-type Page = 'tasks' | 'users' | 'audit' | 'completed';
+type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'register' | 'pending-approval' | 'authorization-requests';
 
 const App: React.FC = () => {
   const { user, loading: authLoading, logout, isManager } = useAuth();
+  const [showRegister, setShowRegister] = React.useState(false);
 
   // Se não logado
   if (authLoading) {
@@ -217,7 +222,19 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <LoginPage />;
+    if (showRegister) {
+      return <RegisterPage onBack={() => setShowRegister(false)} />;
+    }
+    return <LoginPage onRegister={() => setShowRegister(true)} />;
+  }
+
+  // Verificar status de autorização
+  if (user.authorizationStatus === 'pending') {
+    return <PendingApprovalPage />;
+  }
+
+  if (user.authorizationStatus === 'rejected') {
+    return <RejectedPage />;
   }
 
   return <TaskApp />;
@@ -238,7 +255,7 @@ const TaskApp: React.FC = () => {
   } = useTasks();
 
   // Hook de notificações do Windows
-  const { checkOverdueTasks, checkOverdueAlerts } = useNotifications();
+  const { checkOverdueTasks, checkOverdueAlerts, checkPendingRequests } = useNotifications();
 
   const [page, setPage] = useState<Page>('tasks');
   const [newTaskName, setNewTaskName] = useState('');
@@ -268,6 +285,7 @@ const TaskApp: React.FC = () => {
 
   // Banner de alertas de tarefas atrasadas (da tabela overdue_alerts)
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<User[]>([]);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -345,6 +363,32 @@ const TaskApp: React.FC = () => {
       checkOverdueAlerts(overdueAlerts);
     }
   }, [overdueAlerts, loading, checkOverdueAlerts]);
+
+  // Monitorar novas solicitações de acesso (apenas para admins)
+  useEffect(() => {
+    if (isManager && !loading) {
+      const loadPendingRequests = async () => {
+        try {
+          const requests = await authApi.getPendingRequests();
+          setPendingRequests(requests);
+        } catch (error) {
+          console.error('Erro ao carregar solicitações pendentes:', error);
+        }
+      };
+
+      // Carregar imediatamente
+      loadPendingRequests();
+      checkPendingRequests();
+      
+      // Verificar a cada 30 segundos
+      const interval = setInterval(() => {
+        loadPendingRequests();
+        checkPendingRequests();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isManager, loading, checkPendingRequests]);
 
   /** Verifica se uma tarefa está atrasada (horário limite ultrapassado OU flag isOverdue do backend) */
   const isTaskOverdue = useCallback(
@@ -482,6 +526,7 @@ const TaskApp: React.FC = () => {
   if (page === 'users') return <UserManagement onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'audit') return <AuditLogView onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'completed') return <CompletedTasksPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
+  if (page === 'authorization-requests') return <AuthorizationRequestsPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
 
   const resetDialog = () => {
     setNewTaskName('');
@@ -714,6 +759,27 @@ const TaskApp: React.FC = () => {
                     <span className="hidden lg:inline">Usuários</span>
                   </button>
                   <button
+                    onClick={() => setPage('authorization-requests')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                    style={{
+                      background: 'transparent',
+                      color: 'rgba(0, 0, 0, 0.7)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)';
+                      e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                      e.currentTarget.style.boxShadow = 'inset 0 1px 0 0 rgba(255, 255, 255, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.border = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <UserPlus className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.8)' }} />
+                    <span className="hidden lg:inline">Solicitações</span>
+                  </button>
+                  <button
                     onClick={() => setPage('audit')}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
                     style={{
@@ -765,13 +831,13 @@ const TaskApp: React.FC = () => {
               <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
 
 
-              {/* Overdue notification bell */}
-              {overdueAlerts.length > 0 && (
+              {/* Notification bell - mostra tarefas atrasadas e solicitações pendentes */}
+              {(overdueAlerts.length > 0 || (isManager && pendingRequests.length > 0)) && (
                 <div className="relative" ref={notifRef}>
                   <button
                     onClick={() => setShowNotifications((prev) => !prev)}
                     className="relative p-1.5 rounded-lg transition-all duration-200"
-                    title="Notificações de atraso"
+                    title="Notificações"
                     style={{
                       background: 'transparent',
                     }}
@@ -786,13 +852,13 @@ const TaskApp: React.FC = () => {
                   >
                     <Bell className="w-5 h-5 animate-pulse" style={{ color: 'rgba(0, 0, 0, 0.7)' }} />
                     <span 
-                      className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      className="absolute -top-0.5 -right-0.5 flex min-w-[18px] h-[18px] items-center justify-center rounded-full text-[10px] font-bold text-white px-1"
                       style={{
                         background: 'rgba(220, 38, 38, 0.9)',
                         boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.6), 0 2px 4px 0 rgba(0, 0, 0, 0.2)',
                       }}
                     >
-                      {overdueAlerts.length}
+                      {overdueAlerts.length + (isManager ? pendingRequests.length : 0)}
                     </span>
                   </button>
 
@@ -814,24 +880,99 @@ const TaskApp: React.FC = () => {
                         `,
                       }}
                     >
-                      <div 
-                        className="px-4 py-3 border-b"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(220, 38, 38, 0.08) 100%)',
-                          borderColor: 'rgba(220, 38, 38, 0.2)',
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: 'rgba(220, 38, 38, 0.8)' }} />
-                          <h3 className="text-sm font-semibold" style={{ color: 'rgba(220, 38, 38, 0.9)' }}>
-                            Tarefas Pendentes do Dia Anterior
-                          </h3>
-                        </div>
-                        <p className="text-[11px] mt-1" style={{ color: 'rgba(220, 38, 38, 0.75)' }}>
-                          {overdueAlerts.length} tarefa{overdueAlerts.length !== 1 ? 's' : ''} pendente{overdueAlerts.length !== 1 ? 's' : ''} do dia anterior
-                        </p>
-                      </div>
-                      <div className="max-h-80 overflow-y-auto" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
+                      {/* Seção de Solicitações Pendentes (apenas para admins) */}
+                      {isManager && pendingRequests.length > 0 && (
+                        <>
+                          <div 
+                            className="px-4 py-3 border-b"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%)',
+                              borderColor: 'rgba(37, 99, 235, 0.2)',
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <UserPlus className="w-4 h-4 shrink-0" style={{ color: 'rgba(37, 99, 235, 0.8)' }} />
+                              <h3 className="text-sm font-semibold" style={{ color: 'rgba(37, 99, 235, 0.9)' }}>
+                                Solicitações de Acesso
+                              </h3>
+                            </div>
+                            <p className="text-[11px] mt-1" style={{ color: 'rgba(37, 99, 235, 0.75)' }}>
+                              {pendingRequests.length} solicitação{pendingRequests.length !== 1 ? 'ões' : ''} aguardando aprovação
+                            </p>
+                          </div>
+                          <div className="max-h-40 overflow-y-auto" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
+                            {pendingRequests.slice(0, 5).map((request) => (
+                              <div 
+                                key={request.id} 
+                                className="px-4 py-2.5 transition-colors cursor-pointer"
+                                style={{
+                                  borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+                                }}
+                                onClick={() => {
+                                  setShowNotifications(false);
+                                  setPage('authorization-requests');
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'transparent';
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <UserCircle className="w-3 h-3 shrink-0" style={{ color: 'rgba(37, 99, 235, 0.7)' }} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate" style={{ color: 'rgba(0, 0, 0, 0.85)' }}>
+                                      {request.name}
+                                    </p>
+                                    <p className="text-xs mt-0.5" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
+                                      @{request.username}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                            {pendingRequests.length > 5 && (
+                              <div 
+                                className="px-4 py-2 text-center"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.3)',
+                                  borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+                                }}
+                              >
+                                <p className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
+                                  + {pendingRequests.length - 5} solicitação{pendingRequests.length - 5 !== 1 ? 'ões' : ''} adicional{pendingRequests.length - 5 !== 1 ? 'is' : ''}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {overdueAlerts.length > 0 && (
+                            <div className="h-px" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
+                          )}
+                        </>
+                      )}
+
+                      {/* Seção de Tarefas Pendentes */}
+                      {overdueAlerts.length > 0 && (
+                        <>
+                          <div 
+                            className="px-4 py-3 border-b"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(220, 38, 38, 0.08) 100%)',
+                              borderColor: 'rgba(220, 38, 38, 0.2)',
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: 'rgba(220, 38, 38, 0.8)' }} />
+                              <h3 className="text-sm font-semibold" style={{ color: 'rgba(220, 38, 38, 0.9)' }}>
+                                Tarefas Pendentes do Dia Anterior
+                              </h3>
+                            </div>
+                            <p className="text-[11px] mt-1" style={{ color: 'rgba(220, 38, 38, 0.75)' }}>
+                              {overdueAlerts.length} tarefa{overdueAlerts.length !== 1 ? 's' : ''} pendente{overdueAlerts.length !== 1 ? 's' : ''} do dia anterior
+                            </p>
+                          </div>
+                          <div className="max-h-80 overflow-y-auto" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         {overdueAlerts.slice(0, 10).map((alert) => (
                           <div 
                             key={alert.id} 
@@ -910,35 +1051,62 @@ const TaskApp: React.FC = () => {
                             </p>
                           </div>
                         )}
-                      </div>
+                          </div>
+                        </>
+                      )}
                       <div 
-                        className="px-4 py-2 border-t"
+                        className="px-4 py-2 border-t flex gap-2"
                         style={{
                           background: 'rgba(255, 255, 255, 0.3)',
                           borderColor: 'rgba(0, 0, 0, 0.08)',
                         }}
                       >
-                        <button
-                          onClick={() => {
-                            setShowNotifications(false);
-                            // Scroll até a seção de pendências
-                            const overdueSection = document.querySelector('[data-section="overdue"]');
-                            if (overdueSection) {
-                              overdueSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                          className="w-full text-xs font-medium flex items-center justify-center gap-1 transition-colors"
-                          style={{ color: 'rgba(220, 38, 38, 0.8)' }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = 'rgba(220, 38, 38, 1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = 'rgba(220, 38, 38, 0.8)';
-                          }}
-                        >
-                          Ver todas as pendências
-                          <span className="text-[10px]">↓</span>
-                        </button>
+                        {isManager && pendingRequests.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setShowNotifications(false);
+                              setPage('authorization-requests');
+                            }}
+                            className="flex-1 text-xs font-medium flex items-center justify-center gap-1 transition-colors py-1.5 rounded"
+                            style={{ 
+                              color: 'rgba(37, 99, 235, 0.8)',
+                              background: 'rgba(37, 99, 235, 0.1)',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = 'rgba(37, 99, 235, 1)';
+                              e.currentTarget.style.background = 'rgba(37, 99, 235, 0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = 'rgba(37, 99, 235, 0.8)';
+                              e.currentTarget.style.background = 'rgba(37, 99, 235, 0.1)';
+                            }}
+                          >
+                            Ver Solicitações
+                          </button>
+                        )}
+                        {overdueAlerts.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setShowNotifications(false);
+                              // Scroll até a seção de pendências
+                              const overdueSection = document.querySelector('[data-section="overdue"]');
+                              if (overdueSection) {
+                                overdueSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
+                            }}
+                            className={`text-xs font-medium flex items-center justify-center gap-1 transition-colors py-1.5 rounded ${isManager && pendingRequests.length > 0 ? 'flex-1' : 'w-full'}`}
+                            style={{ color: 'rgba(220, 38, 38, 0.8)' }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = 'rgba(220, 38, 38, 1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = 'rgba(220, 38, 38, 0.8)';
+                            }}
+                          >
+                            Ver Pendências
+                            <span className="text-[10px]">↓</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1162,7 +1330,7 @@ const TaskApp: React.FC = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {employees.map((emp) => (
-                            <SelectItem key={emp.id} value={String(emp.id)}>{emp.name} ({emp.role === 'manager' ? 'Gestor' : 'Funcionário'})</SelectItem>
+                            <SelectItem key={emp.id} value={String(emp.id)}>{emp.name} ({getRoleLabel(emp.role)})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1517,14 +1685,19 @@ const TaskApp: React.FC = () => {
                               backdropFilter: 'blur(12px)',
                               WebkitBackdropFilter: 'blur(12px)',
                               border: '1px solid rgba(255, 255, 255, 0.2)',
-                              color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
+                              color: task.status === 'pending' 
+                                ? 'rgba(239, 68, 68, 0.85)' 
+                                : `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
                               boxShadow: `
                                 inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
                                 inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
                                 inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
                                 inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
                                 0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                0 0 8px 0 ${task.status === 'pending' 
+                                  ? 'rgba(239, 68, 68, 0.15)' 
+                                  : `rgba(${getStatusColorRGB(task.status)}, 0.15)`}
                               `,
                             }}
                           >
@@ -1978,14 +2151,19 @@ const TaskApp: React.FC = () => {
                               backdropFilter: 'blur(12px)',
                               WebkitBackdropFilter: 'blur(12px)',
                               border: '1px solid rgba(255, 255, 255, 0.2)',
-                              color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
+                              color: task.status === 'pending' 
+                                ? 'rgba(239, 68, 68, 0.85)' 
+                                : `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
                               boxShadow: `
                                 inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
                                 inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
                                 inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
                                 inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
                                 0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                0 0 8px 0 ${task.status === 'pending' 
+                                  ? 'rgba(239, 68, 68, 0.15)' 
+                                  : `rgba(${getStatusColorRGB(task.status)}, 0.15)`}
                               `,
                             }}
                           >

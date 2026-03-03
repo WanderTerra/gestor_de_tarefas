@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Task } from '@/types/task';
-import { OverdueAlert } from '@/services/api';
+import { OverdueAlert, authApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
@@ -205,10 +205,44 @@ export function useNotifications() {
     [user, isManager, sendNotification]
   );
 
+  const previousRequestsCountRef = useRef<number>(0);
+
+  // Monitorar novas solicitações de acesso (apenas para admins)
+  const checkPendingRequests = useCallback(
+    async () => {
+      if (!user || !isManager || Notification.permission !== 'granted') {
+        return;
+      }
+
+      try {
+        const requests = await authApi.getPendingRequests();
+        
+        // Se há novas solicitações, notificar
+        if (requests.length > previousRequestsCountRef.current) {
+          const newCount = requests.length - previousRequestsCountRef.current;
+          const message = newCount === 1 
+            ? '1 nova solicitação de acesso aguardando aprovação'
+            : `${newCount} novas solicitações de acesso aguardando aprovação`;
+          
+          sendNotification('👤 Nova Solicitação de Acesso', {
+            body: message,
+            tag: 'new-authorization-request',
+          });
+        }
+        
+        previousRequestsCountRef.current = requests.length;
+      } catch (error) {
+        console.error('Erro ao verificar solicitações pendentes:', error);
+      }
+    },
+    [user, isManager, sendNotification]
+  );
+
   return {
     requestPermission,
     checkOverdueTasks,
     checkOverdueAlerts,
+    checkPendingRequests,
     isSupported,
     permission,
   };

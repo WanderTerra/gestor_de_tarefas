@@ -3,6 +3,7 @@ import { taskService } from '../services/task.service.js';
 import { auditService } from '../services/audit.service.js';
 import { createTaskSchema, updateTaskSchema } from '../schemas/task.schema.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { isManagerRole } from '../middleware/auth.js';
 
 export const taskController = {
   /**
@@ -12,7 +13,7 @@ export const taskController = {
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const user = req.user!;
-      const tasks = user.role === 'manager'
+      const tasks = isManagerRole(user.role)
         ? await taskService.findAll()
         : await taskService.findByUser(user.id);
       res.json(tasks);
@@ -30,7 +31,7 @@ export const taskController = {
       const task = await taskService.findById(id);
 
       // Funcionário só pode ver tarefas atribuídas a ele
-      if (req.user!.role === 'employee' && task.assignedToId !== req.user!.id) {
+      if (!isManagerRole(req.user!.role) && task.assignedToId !== req.user!.id) {
         throw new AppError(403, 'Sem permissão para ver esta tarefa');
       }
 
@@ -50,11 +51,11 @@ export const taskController = {
       const user = req.user!;
 
       let assignedToId: number;
-      if (user.role === 'employee') {
+      if (!isManagerRole(user.role)) {
         // Funcionário: tarefa sempre atribuída a si mesmo
         assignedToId = user.id;
       } else {
-        // Gestor: pode atribuir a qualquer um (default: si mesmo)
+        // Administrador: pode atribuir a qualquer um (default: si mesmo)
         assignedToId = req.body.assignedToId ? Number(req.body.assignedToId) : user.id;
       }
 
@@ -86,7 +87,7 @@ export const taskController = {
       const user = req.user!;
       const existingTask = await taskService.findById(id);
 
-      if (user.role === 'employee') {
+      if (!isManagerRole(user.role)) {
         // Verificar se a tarefa é dele
         if (existingTask.assignedToId !== user.id) {
           throw new AppError(403, 'Sem permissão para alterar esta tarefa');
@@ -103,8 +104,8 @@ export const taskController = {
 
       const data = updateTaskSchema.parse(req.body);
 
-      // Se gestor está mudando atribuição
-      const assignedToId = (user.role === 'manager' && req.body.assignedToId !== undefined)
+      // Se administrador está mudando atribuição
+      const assignedToId = (isManagerRole(user.role) && req.body.assignedToId !== undefined)
         ? (req.body.assignedToId ? Number(req.body.assignedToId) : null)
         : undefined;
 
@@ -165,7 +166,7 @@ export const taskController = {
       }
 
       // Funcionário só vê as suas
-      if (user.role !== 'manager') {
+      if (!isManagerRole(user.role)) {
         params.userId = user.id;
       }
 

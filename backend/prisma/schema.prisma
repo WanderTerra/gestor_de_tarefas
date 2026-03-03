@@ -12,8 +12,16 @@ model User {
   username  String   @unique @db.VarChar(50)
   password  String   @db.VarChar(255)
   name      String   @db.VarChar(100)
-  role      String   @default("employee") @db.VarChar(20) // "manager" | "employee"
+  role      String   @default("backoffice") @db.VarChar(20) // "adm" | "backoffice" | "supervisor" | "financeiro" | "rh" | "monitor"
   active    Boolean  @default(true)
+  // Campos de autorização
+  authorizationStatus String   @default("pending") @db.VarChar(20) // "pending" | "approved" | "rejected"
+  requestedAt         DateTime @default(now()) @map("requested_at")
+  approvedAt          DateTime? @map("approved_at")
+  approvedById         Int?     @map("approved_by_id")
+  approvedBy           User?    @relation("UserApprovals", fields: [approvedById], references: [id])
+  rejectedAt           DateTime? @map("rejected_at")
+  rejectionReason      String?   @db.VarChar(500) @map("rejection_reason")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -21,6 +29,7 @@ model User {
   tasks          Task[]          @relation("AssignedTasks")
   auditLogs      AuditLog[]
   overdueAlerts  OverdueAlert[]
+  approvedUsers  User[]          @relation("UserApprovals") // Usuários aprovados por este gestor
 
   @@map("users")
 }

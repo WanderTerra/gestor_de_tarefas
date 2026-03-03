@@ -101,6 +101,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
 // ─── Auth API ────────────────────────────────────────────────────────
 
 export const authApi = {
+  async register(username: string, password: string, name: string): Promise<{ message: string; user: User }> {
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, name }),
+    });
+    return handleResponse<{ message: string; user: User }>(response);
+  },
+
   async login(username: string, password: string): Promise<AuthResponse> {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
@@ -115,6 +124,31 @@ export const authApi = {
       headers: authHeaders(),
     });
     return handleResponse<{ user: User }>(response);
+  },
+
+  async getPendingRequests(): Promise<User[]> {
+    const response = await fetch(`${API_URL}/auth/pending`, {
+      headers: authHeaders(),
+    });
+    return handleResponse<User[]>(response);
+  },
+
+  async approveUser(userId: number, role: string): Promise<{ message: string; user: User }> {
+    const response = await fetch(`${API_URL}/auth/approve`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ userId, role }),
+    });
+    return handleResponse<{ message: string; user: User }>(response);
+  },
+
+  async rejectUser(userId: number, reason?: string): Promise<{ message: string; user: User }> {
+    const response = await fetch(`${API_URL}/auth/reject`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ userId, reason }),
+    });
+    return handleResponse<{ message: string; user: User }>(response);
   },
 };
 

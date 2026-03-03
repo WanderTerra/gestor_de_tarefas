@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { auditService } from './audit.service.js';
+import { isManagerRole } from '../middleware/auth.js';
 
 const ACTIVE_STATUSES = ['pending', 'in-progress', 'waiting', 'not-executed'];
 const SYSTEM_USER_ID = 1; // ID do sistema para auditoria automática
@@ -202,7 +203,7 @@ export const overdueService = {
       status: 'active',
     };
 
-    if (role === 'employee') {
+    if (!isManagerRole(role)) {
       where.userId = userId;
     }
 
@@ -250,7 +251,7 @@ export const overdueService = {
       status: 'active',
     };
 
-    if (role === 'employee') {
+    if (!isManagerRole(role)) {
       where.userId = userId;
     }
 

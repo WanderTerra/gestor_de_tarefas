@@ -292,11 +292,20 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
             <Badge 
               variant="outline"
               style={{
-                background: 'rgba(74, 222, 128, 0.12)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(74, 222, 128, 0.25)',
-                color: 'rgba(22, 101, 52, 0.75)',
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(12px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: 'rgba(22, 101, 52, 0.6)',
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                  inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                  inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                  0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                  0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                  0 0 8px 0 rgba(22, 101, 52, 0.15)
+                `,
               }}
             >
               {tasks.length} tarefa{tasks.length !== 1 ? 's' : ''} concluída{tasks.length !== 1 ? 's' : ''}
@@ -511,11 +520,20 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                    <Badge 
                                      variant="outline"
                                      style={{
-                                       background: `rgba(${getStatusColorRGB(task.status)}, 0.12)`,
-                                       backdropFilter: 'blur(12px)',
-                                       WebkitBackdropFilter: 'blur(12px)',
-                                       border: `1px solid rgba(${getStatusColorRGB(task.status)}, 0.25)`,
-                                       color: `rgba(${getStatusColorRGB(task.status)}, 0.75)`,
+                                       background: 'rgba(255, 255, 255, 0.1)',
+                                       backdropFilter: 'blur(12px) saturate(180%)',
+                                       WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                       border: '1px solid rgba(255, 255, 255, 0.2)',
+                                       color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
+                                       boxShadow: `
+                                         inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                         inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                         inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                         inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                         0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                         0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                         0 0 8px 0 rgba(${getStatusColorRGB(task.status)}, 0.15)
+                                       `,
                                      }}
                                    >
                                      {config.label}
@@ -535,11 +553,20 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                 variant="secondary" 
                                 className="text-xs"
                                 style={{
-                                  background: 'rgba(148, 163, 184, 0.12)',
-                                  backdropFilter: 'blur(12px)',
-                                  WebkitBackdropFilter: 'blur(12px)',
-                                  border: '1px solid rgba(148, 163, 184, 0.25)',
-                                  color: 'rgba(71, 85, 105, 0.75)',
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  backdropFilter: 'blur(12px) saturate(180%)',
+                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: 'rgba(71, 85, 105, 0.6)',
+                                  boxShadow: `
+                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                    0 0 8px 0 rgba(71, 85, 105, 0.15)
+                                  `,
                                 }}
                               >
                                 👤 {task.assignedTo.name}
@@ -554,11 +581,20 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                         variant="secondary" 
                                         className="text-xs gap-1"
                                         style={{
-                                          background: 'rgba(167, 139, 250, 0.12)',
-                                          backdropFilter: 'blur(12px)',
-                                          WebkitBackdropFilter: 'blur(12px)',
-                                          border: '1px solid rgba(167, 139, 250, 0.25)',
-                                          color: 'rgba(109, 40, 217, 0.75)',
+                                          background: 'rgba(255, 255, 255, 0.1)',
+                                          backdropFilter: 'blur(12px) saturate(180%)',
+                                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                                          color: 'rgba(109, 40, 217, 0.6)',
+                                          boxShadow: `
+                                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                            0 0 8px 0 rgba(109, 40, 217, 0.15)
+                                          `,
                                         }}
                                       >
                                         🔁 {formatRecurringDays(task.recurringDays)}
@@ -569,11 +605,20 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                         variant="secondary" 
                                         className="text-xs gap-1"
                                         style={{
-                                          background: 'rgba(96, 165, 250, 0.12)',
-                                          backdropFilter: 'blur(12px)',
-                                          WebkitBackdropFilter: 'blur(12px)',
-                                          border: '1px solid rgba(96, 165, 250, 0.25)',
-                                          color: 'rgba(37, 99, 235, 0.75)',
+                                          background: 'rgba(255, 255, 255, 0.1)',
+                                          backdropFilter: 'blur(12px) saturate(180%)',
+                                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                                          color: 'rgba(37, 99, 235, 0.6)',
+                                          boxShadow: `
+                                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                            0 0 8px 0 rgba(37, 99, 235, 0.15)
+                                          `,
                                         }}
                                       >
                                         <Clock className="w-3 h-3" />

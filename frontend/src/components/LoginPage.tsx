@@ -5,7 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-const LoginPage: React.FC = () => {
+interface LoginPageProps {
+  onRegister?: () => void;
+}
+
+const LoginPage: React.FC<LoginPageProps> = ({ onRegister }) => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -231,6 +235,25 @@ const LoginPage: React.FC = () => {
                   'Entrar'
                 )}
               </Button>
+
+              {onRegister && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={onRegister}
+                    className="text-sm underline"
+                    style={{ color: 'rgba(37, 99, 235, 0.8)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'rgba(37, 99, 235, 1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'rgba(37, 99, 235, 0.8)';
+                    }}
+                  >
+                    Não tem conta? Cadastre-se
+                  </button>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

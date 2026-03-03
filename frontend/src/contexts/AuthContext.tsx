@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User } from '@/types/user';
+import { User, isManagerRole } from '@/types/user';
 import { authApi, setToken, getToken } from '@/services/api';
 
 interface AuthContextType {
@@ -53,8 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         login,
         logout,
-        isManager: user?.role === 'manager',
-        isEmployee: user?.role === 'employee',
+        isManager: user ? isManagerRole(user.role) : false,
+        isEmployee: user ? !isManagerRole(user.role) : false,
       }}
     >
       {children}

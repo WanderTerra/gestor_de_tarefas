@@ -4,12 +4,22 @@ import { env } from '../config/env.js';
 import { prisma } from '../config/prisma.js';
 import { AppError } from './errorHandler.js';
 
+// Helper para verificar se é administrador
+export function isManagerRole(role: string): boolean {
+  return role === 'adm';
+}
+
+// Helper para verificar se é employee (todos exceto adm)
+export function isEmployeeRole(role: string): boolean {
+  return role !== 'adm';
+}
+
 // Extender o tipo Request do Express para incluir o usuário autenticado
 export interface AuthUser {
   id: number;
   username: string;
   name: string;
-  role: 'manager' | 'employee';
+  role: string; // 'adm' | 'backoffice' | 'supervisor' | 'financeiro' | 'rh' | 'monitor'
 }
 
 declare global {
@@ -41,18 +51,23 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
 
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, username: true, name: true, role: true, active: true },
+      select: { id: true, username: true, name: true, role: true, active: true, authorizationStatus: true },
     });
 
     if (!user || !user.active) {
       throw new AppError(401, 'Usuário não encontrado ou desativado');
     }
 
+    // Verificar se o usuário está autorizado (exceto para rotas públicas)
+    if (user.authorizationStatus !== 'approved') {
+      throw new AppError(403, 'Acesso não autorizado. Aguarde a aprovação do gestor.');
+    }
+
     req.user = {
       id: user.id,
       username: user.username,
       name: user.name,
-      role: user.role as 'manager' | 'employee',
+      role: user.role,
     };
 
     next();
@@ -63,6 +78,7 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
 
 /**
  * Middleware que verifica se o usuário tem a role necessária
+ * Aceita 'manager' para compatibilidade (será tratado como 'adm')
  */
 export function authorize(...roles: string[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -70,7 +86,10 @@ export function authorize(...roles: string[]) {
       return next(new AppError(401, 'Não autenticado'));
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Converter 'manager' para 'adm' para compatibilidade
+    const normalizedRoles = roles.map(r => r === 'manager' ? 'adm' : r);
+    
+    if (!normalizedRoles.includes(req.user.role)) {
       return next(new AppError(403, 'Sem permissão para esta ação'));
     }
 

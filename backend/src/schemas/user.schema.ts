@@ -1,12 +1,23 @@
 import { z } from 'zod';
 
-export const UserRole = z.enum(['manager', 'employee']);
+// Roles disponíveis: adm (manager) e os demais são employees
+export const UserRole = z.enum(['adm', 'backoffice', 'supervisor', 'financeiro', 'rh', 'monitor']);
+
+// Helper para verificar se é administrador
+export function isManagerRole(role: string): boolean {
+  return role === 'adm';
+}
+
+// Helper para verificar se é employee (todos exceto adm)
+export function isEmployeeRole(role: string): boolean {
+  return role !== 'adm';
+}
 
 export const createUserSchema = z.object({
   username: z.string().min(3, 'Mínimo 3 caracteres').max(50),
   password: z.string().min(4, 'Mínimo 4 caracteres').max(100),
   name: z.string().min(1, 'Nome é obrigatório').max(100),
-  role: UserRole.default('employee'),
+  role: UserRole.default('backoffice'),
 });
 
 export const updateUserSchema = z.object({
