@@ -238,37 +238,7 @@ const TaskApp: React.FC = () => {
   } = useTasks();
 
   // Hook de notificações do Windows
-  const { checkOverdueTasks, checkOverdueAlerts, requestPermission, isSupported, permission } = useNotifications();
-
-  // Função de teste para notificações (temporária)
-  const testNotification = useCallback(() => {
-    if (!('Notification' in window)) {
-      alert('Notificações não são suportadas neste navegador');
-      return;
-    }
-
-    if (Notification.permission === 'granted') {
-      new Notification('🧪 Teste de Notificação', {
-        body: 'Esta é uma notificação de teste do sistema de gestão de tarefas.',
-        icon: '/favicon.ico',
-        tag: 'test-notification',
-      });
-    } else if (Notification.permission === 'default') {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          new Notification('🧪 Teste de Notificação', {
-            body: 'Permissão concedida! As notificações estão funcionando.',
-            icon: '/favicon.ico',
-            tag: 'test-notification',
-          });
-        } else {
-          alert('Permissão de notificações negada. Por favor, habilite nas configurações do navegador.');
-        }
-      });
-    } else {
-      alert('Permissão de notificações negada. Por favor, habilite nas configurações do navegador.');
-    }
-  }, []);
+  const { checkOverdueTasks, checkOverdueAlerts } = useNotifications();
 
   const [page, setPage] = useState<Page>('tasks');
   const [newTaskName, setNewTaskName] = useState('');
@@ -794,29 +764,6 @@ const TaskApp: React.FC = () => {
               {/* Separador */}
               <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
 
-              {/* Botão de teste de notificações (temporário) */}
-              <button
-                onClick={testNotification}
-                className="relative p-1.5 rounded-lg transition-all duration-200"
-                title={`🧪 Testar notificações (Status: ${isSupported ? (permission === 'granted' ? 'Ativo' : permission === 'denied' ? 'Negado' : 'Pendente') : 'Não suportado'})`}
-                style={{
-                  background: isSupported && permission === 'granted' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(59, 130, 246, 0.15)',
-                  border: isSupported && permission === 'granted' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)';
-                  e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = isSupported && permission === 'granted' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(59, 130, 246, 0.15)';
-                  e.currentTarget.style.border = isSupported && permission === 'granted' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)';
-                }}
-              >
-                <AlertCircle className="w-5 h-5" style={{ color: isSupported && permission === 'granted' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(59, 130, 246, 0.9)' }} />
-              </button>
-              
-              {/* Separador */}
-              <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
 
               {/* Overdue notification bell */}
               {overdueAlerts.length > 0 && (
@@ -1114,6 +1061,192 @@ const TaskApp: React.FC = () => {
             >
               ✕
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Botão Nova Tarefa - Topo da página (UI/UX Best Practice) */}
+      {!loading && (
+        <div className="container mx-auto px-4 pt-6 pb-4">
+          <div className="flex items-center justify-end">
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetDialog(); }}>
+              <DialogTrigger asChild>
+                <Button
+                  size="default"
+                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
+                    backdropFilter: 'blur(12px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: 'rgba(15, 23, 42, 0.9)',
+                    boxShadow: `
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                      inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                      inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                      0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                      0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                    `,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Nova Tarefa
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Criar Nova Tarefa</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  {/* Nome */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Nome da Tarefa</label>
+                    <Input
+                      placeholder="Digite o nome da tarefa"
+                      value={newTaskName}
+                      onChange={(e) => setNewTaskName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 10px rgba(255, 255, 255, 0.08),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                        `,
+                      }}
+                    />
+                  </div>
+
+                  {/* Descrição */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Descrição (opcional)</label>
+                    <Input
+                      placeholder="Breve descrição da tarefa"
+                      value={newTaskDescription}
+                      onChange={(e) => setNewTaskDescription(e.target.value)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 10px rgba(255, 255, 255, 0.08),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                        `,
+                      }}
+                    />
+                  </div>
+
+                  {/* Atribuição (gestor) */}
+                  {isManager && employees.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Atribuir a</label>
+                      <Select value={assignToId} onValueChange={setAssignToId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um funcionário" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employees.map((emp) => (
+                            <SelectItem key={emp.id} value={String(emp.id)}>{emp.name} ({emp.role === 'manager' ? 'Gestor' : 'Funcionário'})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Tarefa Recorrente */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Tarefa Recorrente</label>
+                    <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
+                  </div>
+
+                  {isRecurring && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Dias da Semana</label>
+                      <div className="grid grid-cols-7 gap-2">
+                        {daysOfWeek.map((day) => (
+                          <button
+                            key={day.id}
+                            type="button"
+                            onClick={() => toggleDay(day.id)}
+                            className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                              selectedDays.includes(day.id)
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                          >
+                            {day.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Horário Limite */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Definir Horário Limite</label>
+                    <Switch checked={hasTimeLimit} onCheckedChange={setHasTimeLimit} />
+                  </div>
+
+                  {hasTimeLimit && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Horário Limite</label>
+                      <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+                        <Input
+                          type="time"
+                          value={timeLimit}
+                          onChange={(e) => setTimeLimit(e.target.value)}
+                          className="pl-10"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.4)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            boxShadow: `
+                              inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                              0 0 0 1px rgba(255, 255, 255, 0.2),
+                              0 0 10px rgba(255, 255, 255, 0.08),
+                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                            `,
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Tarefas não concluídas até este horário serão marcadas como atrasadas
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Botão criar */}
+                  <Button onClick={handleAddTask} className="w-full" disabled={saving || !newTaskName.trim()}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      'Adicionar Tarefa'
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       )}
@@ -1652,207 +1785,27 @@ const TaskApp: React.FC = () => {
 
       {/* Tasks Grid — Tarefas do Dia */}
       {!loading && (
-        <div className="container mx-auto px-4 py-8">
-          {/* Botão Nova Tarefa - Área de conteúdo */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <CalendarCheck className="w-5 h-5 text-slate-700" />
-              <h2 className="text-lg font-bold text-foreground">
-                {activeTasks.length > 0 || overdueAlerts.length > 0 ? 'Tarefas de Hoje' : 'Minhas Tarefas'}
-              </h2>
-              {activeTasks.length > 0 && (
-                <Badge 
-                  variant="outline"
-                  style={{
-                    background: 'rgba(96, 165, 250, 0.12)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(96, 165, 250, 0.25)',
-                    color: 'rgba(37, 99, 235, 0.75)',
-                  }}
-                >
-                  {activeTasks.length}
-                </Badge>
-              )}
-            </div>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetDialog(); }}>
-              <DialogTrigger asChild>
-                <Button
-                  size="default"
-                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.15)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255, 255, 255, 0.25)',
-                    color: 'rgba(15, 23, 42, 0.9)',
-                    boxShadow: `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                      inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                      inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                      0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                    `,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.25)';
-                  }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Nova Tarefa
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criar Nova Tarefa</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  {/* Nome */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Nome da Tarefa</label>
-                    <Input
-                      placeholder="Digite o nome da tarefa"
-                      value={newTaskName}
-                      onChange={(e) => setNewTaskName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.4)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 10px rgba(255, 255, 255, 0.08),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                        `,
-                      }}
-                    />
-                  </div>
-
-                  {/* Descrição */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Descrição (opcional)</label>
-                    <Input
-                      placeholder="Breve descrição da tarefa"
-                      value={newTaskDescription}
-                      onChange={(e) => setNewTaskDescription(e.target.value)}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.4)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 10px rgba(255, 255, 255, 0.08),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                        `,
-                      }}
-                    />
-                  </div>
-
-                  {/* Atribuição (gestor) */}
-                  {isManager && employees.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Atribuir a</label>
-                      <Select value={assignToId} onValueChange={setAssignToId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um funcionário" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {employees.map((emp) => (
-                            <SelectItem key={emp.id} value={String(emp.id)}>{emp.name} ({emp.role === 'manager' ? 'Gestor' : 'Funcionário'})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Tarefa Recorrente */}
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Tarefa Recorrente</label>
-                    <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
-                  </div>
-
-                  {isRecurring && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Dias da Semana</label>
-                      <div className="grid grid-cols-7 gap-2">
-                        {daysOfWeek.map((day) => (
-                          <button
-                            key={day.id}
-                            type="button"
-                            onClick={() => toggleDay(day.id)}
-                            className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                              selectedDays.includes(day.id)
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            {day.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Horário Limite */}
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Definir Horário Limite</label>
-                    <Switch checked={hasTimeLimit} onCheckedChange={setHasTimeLimit} />
-                  </div>
-
-                  {hasTimeLimit && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Horário Limite</label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                        <Input
-                          type="time"
-                          value={timeLimit}
-                          onChange={(e) => setTimeLimit(e.target.value)}
-                          className="pl-10"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.4)',
-                            backdropFilter: 'blur(10px)',
-                            WebkitBackdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255, 255, 255, 0.3)',
-                            boxShadow: `
-                              inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                              0 0 0 1px rgba(255, 255, 255, 0.2),
-                              0 0 10px rgba(255, 255, 255, 0.08),
-                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                            `,
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Tarefas não concluídas até este horário serão marcadas como atrasadas
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Botão criar */}
-                  <Button onClick={handleAddTask} className="w-full" disabled={saving || !newTaskName.trim()}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      'Adicionar Tarefa'
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+        <div className="container mx-auto px-4 py-4">
+          {/* Título da seção */}
+          <div className="flex items-center gap-3 mb-6">
+            <CalendarCheck className="w-5 h-5 text-slate-700" />
+            <h2 className="text-lg font-bold text-foreground">
+              {activeTasks.length > 0 || overdueAlerts.length > 0 ? 'Tarefas de Hoje' : 'Minhas Tarefas'}
+            </h2>
+            {activeTasks.length > 0 && (
+              <Badge 
+                variant="outline"
+                style={{
+                  background: 'rgba(96, 165, 250, 0.12)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(96, 165, 250, 0.25)',
+                  color: 'rgba(37, 99, 235, 0.75)',
+                }}
+              >
+                {activeTasks.length}
+              </Badge>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
             {activeTasks.map((task) => {

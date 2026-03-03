@@ -75,8 +75,6 @@ export function useNotifications() {
       try {
         const notification = new Notification(title, {
           ...options,
-          icon: '/favicon.ico', // Ícone da aplicação
-          badge: '/favicon.ico',
           requireInteraction: false, // Não requer interação para não ser intrusivo
           silent: false, // Tocar som
         });
@@ -123,10 +121,23 @@ export function useNotifications() {
 
         // Se a tarefa acabou de ficar atrasada (mudou de false para true)
         if (!previousIsOverdue && currentIsOverdue) {
+          console.log(`🔔 Tarefa ${task.id} ficou atrasada!`, {
+            taskName: task.name,
+            timeLimit: task.timeLimit,
+            currentTime,
+            isOverdue: task.isOverdue,
+          });
+          
           // Notificar o responsável pela tarefa OU administrador
           const shouldNotify = 
             (task.assignedToId === user.id) || // É o responsável
             (isManager); // É administrador
+
+          console.log('Deve notificar?', shouldNotify, {
+            assignedToId: task.assignedToId,
+            userId: user.id,
+            isManager,
+          });
 
           if (shouldNotify) {
             const taskName = task.name.length > 50 ? `${task.name.substring(0, 50)}...` : task.name;
@@ -134,6 +145,7 @@ export function useNotifications() {
               ? `Horário limite ultrapassado (${task.timeLimit})`
               : 'Tarefa pendente do dia anterior';
 
+            console.log('📤 Enviando notificação...', { taskName, reason });
             sendNotification('⚠️ Tarefa Atrasada', {
               body: `${taskName}\n${reason}`,
               tag: `task-overdue-${task.id}`, // Evita duplicatas
