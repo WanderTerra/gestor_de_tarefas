@@ -13,14 +13,14 @@ Wants=mariadb.service
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=portes
+Group=portes
 
-# Diretório da aplicação (ajustar conforme o caminho no servidor)
-WorkingDirectory=/var/www/gestor-de-tarefas/backend
+# Diretório da aplicação (caminho no servidor)
+WorkingDirectory=/home/portes/gestor_tarefas/gestor_de_tarefas/backend
 
-# Carregar variáveis de ambiente do arquivo .env (opcional)
-EnvironmentFile=/var/www/gestor-de-tarefas/backend/.env
+# Carregar variáveis de ambiente do arquivo .env
+EnvironmentFile=/home/portes/gestor_tarefas/gestor_de_tarefas/backend/.env
 
 # Comando para iniciar (Node 18+)
 ExecStart=/usr/bin/node dist/server.js
