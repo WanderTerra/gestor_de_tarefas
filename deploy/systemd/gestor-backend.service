@@ -1,0 +1,36 @@
+# systemd - Gestor de Tarefas Backend (Debian)
+# Colocar em: /etc/systemd/system/gestor-backend.service
+# Comandos:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable gestor-backend
+#   sudo systemctl start gestor-backend
+#   sudo systemctl status gestor-backend
+
+[Unit]
+Description=Gestor de Tarefas - API Backend
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+# Diretório da aplicação (ajustar conforme o caminho no servidor)
+WorkingDirectory=/var/www/gestor-de-tarefas/backend
+
+# Carregar variáveis de ambiente do arquivo .env (opcional)
+EnvironmentFile=/var/www/gestor-de-tarefas/backend/.env
+
+# Comando para iniciar (Node 18+)
+ExecStart=/usr/bin/node dist/server.js
+
+# Reiniciar em caso de falha
+Restart=on-failure
+RestartSec=5
+
+# Limites
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

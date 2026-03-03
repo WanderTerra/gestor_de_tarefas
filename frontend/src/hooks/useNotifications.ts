@@ -154,7 +154,7 @@ export function useNotifications() {
         }
 
         // Atualizar estado anterior
-        previousTasksRef.current.set(task.id, currentIsOverdue);
+        previousTasksRef.current.set(task.id, Boolean(currentIsOverdue));
       });
     },
     [user, isManager, sendNotification]

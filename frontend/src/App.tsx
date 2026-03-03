@@ -209,7 +209,7 @@ const getStatusColorRGB = (status: TaskStatus): string => {
 type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'register' | 'pending-approval' | 'authorization-requests';
 
 const App: React.FC = () => {
-  const { user, loading: authLoading, logout, isManager } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [showRegister, setShowRegister] = React.useState(false);
 
   // Se não logado

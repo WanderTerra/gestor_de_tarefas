@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus, ArrowLeft, LayoutDashboard, Shield, LogOut, CheckCircle2, FileText, CalendarCheck, ClipboardList } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, UserPlus, LayoutDashboard, Shield, LogOut, CheckCircle2, FileText, CalendarCheck } from 'lucide-react';
 import { User, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';

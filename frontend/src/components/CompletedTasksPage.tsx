@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2,
-  LayoutDashboard, Users, FileText, CalendarCheck, Shield, LogOut, ClipboardList,
+  LayoutDashboard, Users, FileText, CalendarCheck, Shield, LogOut,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi } from '@/services/api';
@@ -51,14 +51,6 @@ function brToISO(brDate: string): string {
   if (parts.length !== 3) return '';
   const [day, month, year] = parts;
   return `${year}-${month}-${day}`;
-}
-
-/** Converte formato ISO (aaaa-mm-dd) para brasileiro (dd/mm/aaaa) */
-function isoToBR(isoDate: string): string {
-  const parts = isoDate.split('-');
-  if (parts.length !== 3) return '';
-  const [year, month, day] = parts;
-  return `${day}/${month}/${year}`;
 }
 
 /** Aplica máscara de data brasileira (dd/mm/aaaa) */
@@ -470,7 +462,6 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
                     {dateTasks.map((task) => {
                       const config = statusConfig[task.status];
-                      const isCompleted = task.status === 'completed';
                       return (
                              <Card
                                key={task.id}

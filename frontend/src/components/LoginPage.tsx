@@ -37,8 +37,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onRegister }) => {
       background: 'linear-gradient(135deg, rgba(148, 163, 184, 0.03) 0%, rgba(100, 116, 139, 0.05) 100%)',
     }}>
       <div className="w-full max-w-md">
-        {/* Título */}
+        {/* Logo e título */}
         <div className="text-center mb-8">
+          <img
+            src="/logosemfundo.png"
+            alt="Logo Gestor de Tarefas"
+            className="mx-auto mb-4 h-16 w-auto object-contain"
+          />
           <h1 className="text-3xl font-bold" style={{ color: 'rgba(15, 23, 42, 0.9)' }}>Gestor de Tarefas</h1>
           <p className="mt-2" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>Faça login para continuar</p>
         </div>

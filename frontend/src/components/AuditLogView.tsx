@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, LayoutDashboard, Shield, LogOut, CheckCircle2, Users, FileText, CalendarCheck, ChevronDown, ChevronUp, Clock, ClipboardList } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronLeft, ChevronRight, LayoutDashboard, Shield, LogOut, CheckCircle2, Users, FileText, CalendarCheck, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { AuditLog } from '@/types/user';
 import { auditApi, ApiError } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';

@@ -36,6 +36,13 @@ Para criar uma build de produção:
 npm run build
 ```
 
+## 🖥️ Deploy (Debian 13)
+
+Para colocar em produção num servidor Debian 13 (Nginx + Node + MariaDB), use os ficheiros na pasta `deploy/` e siga o guia:
+
+- **[deploy/README-DEPLOY-DEBIAN.md](deploy/README-DEPLOY-DEBIAN.md)** – passo a passo completo
+- Script auxiliar: `deploy/install-debian.sh`
+
 ## 📁 Estrutura do Projeto
 
 ```

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { authApi } from '@/services/api';
-import { useNavigate } from 'react-router-dom';
 
 interface RegisterPageProps {
   onBack?: () => void;

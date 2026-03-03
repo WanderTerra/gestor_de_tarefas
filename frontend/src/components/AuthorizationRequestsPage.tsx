@@ -6,17 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, AlertCircle, ArrowLeft, CheckCircle2, XCircle, UserPlus, Clock } from 'lucide-react';
-import { User, getRoleLabel } from '@/types/user';
-import { authApi, ApiError } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { User } from '@/types/user';
+import { authApi } from '@/services/api';
 
 interface AuthorizationRequestsPageProps {
   onBack: () => void;
   onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit') => void;
 }
 
-const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ onBack, onNavigate }) => {
-  const { user, isManager, logout } = useAuth();
+const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ onBack }) => {
   const [requests, setRequests] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
