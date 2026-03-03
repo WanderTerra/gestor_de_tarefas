@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(255)
+  name      String   @db.VarChar(100)
+  role      String   @default("employee") @db.VarChar(20) // "manager" | "employee"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  tasks          Task[]          @relation("AssignedTasks")
+  auditLogs      AuditLog[]
+  overdueAlerts  OverdueAlert[]
+
+  @@map("users")
+}
+
+model Task {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(255)
+  description   String?   @db.VarChar(1000)
+  status        String    @default("pending") @db.VarChar(20)
+  reason        String?   @db.VarChar(500)
+  deadline      DateTime?
+  isOverdue     Boolean   @default(false) @map("is_overdue")
+  isRecurring   Boolean   @default(false) @map("is_recurring")
+  recurringDays String?   @db.VarChar(100) @map("recurring_days")
+  timeLimit     String?   @db.VarChar(5) @map("time_limit")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Atribuição a um funcionário
+  assignedToId  Int?      @map("assigned_to_id")
+  assignedTo    User?     @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  // Relação com alertas
+  overdueAlerts OverdueAlert[]
+
+  @@index([assignedToId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  action    String   @db.VarChar(50) // "create", "update", "delete", "status_change", "login"
+  entity    String   @db.VarChar(50) // "task", "user", "auth"
+  entityId  Int?     @map("entity_id")
+  details   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relação
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model OverdueAlert {
+  id            Int       @id @default(autoincrement())
+  taskId        Int       @map("task_id")
+  userId        Int?      @map("user_id")           // funcionário responsável (null = sem responsável)
+  detectedAt    DateTime  @default(now()) @map("detected_at")  // quando foi detectada como atrasada
+  referenceDate DateTime  @map("reference_date")     // data em que deveria ter sido feita
+  acknowledgedAt DateTime? @map("acknowledged_at")   // quando o usuário dispensou o alerta
+  resolvedAt    DateTime? @map("resolved_at")        // quando a tarefa foi concluída/resolvida
+  status        String    @default("active") @db.VarChar(20)   // "active" | "acknowledged" | "resolved"
+
+  // Relações
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id])
+
+  @@unique([taskId, referenceDate])  // Impede alerta duplicado para a mesma tarefa+data
+  @@index([userId])
+  @@index([status])
+  @@index([detectedAt])
+  @@map("overdue_alerts")
+}

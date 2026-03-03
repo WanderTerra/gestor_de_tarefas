@@ -1,0 +1,110 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { env } from './config/env.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import routes from './routes/index.js';
+import { createSSHTunnel, closeSSHTunnel } from './config/ssh-tunnel.js';
+import { overdueService } from './services/overdue.service.js';
+
+const app = express();
+
+// Middleware de segurança
+app.use(helmet());
+
+// CORS
+app.use(cors({
+  origin: env.CORS_ORIGIN,
+  credentials: true,
+}));
+
+// Parse JSON
+app.use(express.json());
+
+// Rotas da API
+app.use('/api', routes);
+
+// Tratamento global de erros
+app.use(errorHandler);
+
+// Iniciar servidor (com túnel SSH se configurado)
+async function start() {
+  // Tenta abrir túnel SSH, mas não bloqueia o servidor se falhar
+  if (env.SSH_HOST) {
+    try {
+      await createSSHTunnel();
+      // Aguardar um pouco para o túnel estabilizar
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (err) {
+      console.warn('⚠️  Aviso: Não foi possível estabelecer túnel SSH. Continuando sem túnel...');
+      console.warn('   Se você precisa do túnel SSH, verifique as credenciais e conectividade.');
+      // Não rejeita - permite que o servidor inicie mesmo sem túnel
+    }
+  } else {
+    console.log('ℹ️  SSH_HOST não configurado. Conectando diretamente ao banco local.');
+  }
+
+  try {
+    app.listen(env.PORT, async () => {
+      console.log(`🚀 Backend rodando em http://localhost:${env.PORT}`);
+      console.log(`📋 API: http://localhost:${env.PORT}/api`);
+      console.log(`🏥 Health: http://localhost:${env.PORT}/api/health`);
+      console.log(`🌍 Ambiente: ${env.NODE_ENV}`);
+
+      // Testar conexão com o banco
+      const { testDatabaseConnection } = await import('./config/prisma.js');
+      const dbConnected = await testDatabaseConnection();
+      if (!dbConnected) {
+        console.error('❌ ATENÇÃO: Banco de dados não está acessível!');
+        console.error('   O servidor continuará rodando, mas as operações de banco falharão.');
+        console.error('   Verifique a conexão e tente novamente.');
+      } else {
+        console.log('✅ Conexão com banco de dados estabelecida com sucesso.');
+      }
+
+      // Verificar e criar alertas de tarefas atrasadas ao iniciar
+      try {
+        await overdueService.checkAndCreateAlerts();
+        await overdueService.checkTimeLimitOverdue();
+      } catch (err) {
+        console.error('⚠️ Erro ao verificar tarefas atrasadas:', err);
+      }
+
+      // Verificar alertas do dia anterior a cada hora
+      setInterval(async () => {
+        try {
+          await overdueService.checkAndCreateAlerts();
+        } catch (err) {
+          console.error('⚠️ Erro na verificação periódica de overdue:', err);
+        }
+      }, 60 * 60 * 1000);
+
+      // Verificar horário limite a cada minuto
+      setInterval(async () => {
+        try {
+          await overdueService.checkTimeLimitOverdue();
+        } catch (err) {
+          console.error('⚠️ Erro na verificação de horário limite:', err);
+        }
+      }, 60 * 1000);
+    });
+  } catch (error) {
+    console.error('❌ Falha ao iniciar o servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Encerrar túnel SSH ao fechar o processo
+process.on('SIGINT', async () => {
+  await closeSSHTunnel();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await closeSSHTunnel();
+  process.exit(0);
+});
+
+start();
+
+export default app;
