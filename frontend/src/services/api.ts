@@ -1,7 +1,8 @@
 import { Task, TaskStatus } from '@/types/task';
 import { User, AuthResponse, AuditResponse } from '@/types/user';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Em produção usa sempre /api (mesmo domínio). Em dev usa VITE_API_URL se existir, senão /api.
+const API_URL = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '/api') : '/api';
 
 // ─── Token Management ──────────────────────────────────────────────
 
