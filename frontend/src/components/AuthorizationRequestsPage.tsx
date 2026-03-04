@@ -5,16 +5,28 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, AlertCircle, ArrowLeft, CheckCircle2, XCircle, UserPlus, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, XCircle, UserPlus, Clock } from 'lucide-react';
 import { User } from '@/types/user';
 import { authApi } from '@/services/api';
+import Header from '@/components/Header';
 
 interface AuthorizationRequestsPageProps {
   onBack: () => void;
   onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit') => void;
 }
 
-const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ onBack }) => {
+const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ onBack, onNavigate }) => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
+    if (navPage === 'authorization-requests') {
+      // Já estamos na página de solicitações
+      return;
+    }
+    if (onNavigate) {
+      onNavigate(navPage);
+    } else {
+      onBack();
+    }
+  };
   const [requests, setRequests] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,31 +96,11 @@ const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ o
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b" style={{ borderColor: 'rgba(0, 0, 0, 0.08)' }}>
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-                className="gap-2"
-                style={{ color: 'rgba(0, 0, 0, 0.7)' }}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </Button>
-              <div className="flex items-center gap-3">
-                <UserPlus className="w-5 h-5 text-slate-700" />
-                <h1 className="text-xl font-bold" style={{ color: 'rgba(15, 23, 42, 0.9)' }}>
-                  Solicitações de Acesso
-                </h1>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        currentPage="authorization-requests"
+        onNavigate={handleNavigate}
+        tasks={[]}
+      />
 
       {/* Conteúdo */}
       <div className="container mx-auto px-4 py-8">

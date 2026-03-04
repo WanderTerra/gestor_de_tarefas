@@ -12,6 +12,14 @@ const RejectedPage: React.FC = () => {
       background: 'linear-gradient(135deg, rgba(148, 163, 184, 0.03) 0%, rgba(100, 116, 139, 0.05) 100%)',
     }}>
       <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <img
+            src="/logosemfundomenor.png"
+            alt="Logo Gestor de Tarefas"
+            className="mx-auto h-10 w-auto object-contain"
+          />
+        </div>
         <Card
           className="border-0 shadow-none"
           style={{

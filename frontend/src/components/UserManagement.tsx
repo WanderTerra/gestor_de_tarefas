@@ -5,18 +5,31 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus, LayoutDashboard, Shield, LogOut, CheckCircle2, FileText, CalendarCheck } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, UserPlus } from 'lucide-react';
 import { User, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import Header from '@/components/Header';
 
 interface UserManagementProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit') => void;
+  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests') => void;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) => {
-  const { user, isManager, logout } = useAuth();
+  const { isManager } = useAuth();
+
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
+    if (navPage === 'users') {
+      // Já estamos na página de usuários
+      return;
+    }
+    if (onNavigate) {
+      onNavigate(navPage);
+    } else {
+      onBack();
+    }
+  };
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,125 +96,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ═══════════ Header Transparent Glass ═══════════ */}
-      <header
-        className="sticky top-0 z-50 shadow-2xl"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
-          backdropFilter: 'blur(30px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
-          boxShadow: `
-            inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
-            0 0 0 1px rgba(255, 255, 255, 0.15),
-            0 0 20px rgba(255, 255, 255, 0.08),
-            0 8px 32px 0 rgba(0, 0, 0, 0.1),
-            0 2px 8px 0 rgba(0, 0, 0, 0.06)
-          `,
-        }}
-      >
-        <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-[72px]">
-            {/* ── Lado esquerdo: Logo + título (clicável para voltar) ── */}
-            <button
-              onClick={onBack}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-            >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 shadow-md">
-                <LayoutDashboard className="w-5 h-5 text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-bold text-slate-800 leading-tight tracking-tight">
-                  Gestor de Tarefas
-                </h1>
-                <p className="text-[11px] text-slate-500 leading-none -mt-0.5">
-                  Painel de controle
-                </p>
-              </div>
-            </button>
-
-            {/* ── Centro: Navegação (botões agrupados) ── */}
-            <nav className="flex items-center gap-0.5">
-              {/* Botão Tarefas (voltar) */}
-              <button
-                onClick={onBack}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-white/30 transition-all duration-200"
-              >
-                <CalendarCheck className="w-4 h-4 text-slate-700" />
-                <span className="hidden lg:inline">Tarefas</span>
-              </button>
-
-              {/* Concluídas */}
-              <button
-                onClick={() => onNavigate ? onNavigate('completed') : onBack()}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-white/30 transition-all duration-200"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span className="hidden lg:inline">Concluídas</span>
-              </button>
-
-              {/* Usuários (ativo) */}
-              <button
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-900 bg-white/40 hover:bg-white/50 transition-all duration-200"
-              >
-                <UserPlus className="w-4 h-4 text-slate-700" />
-                <span className="hidden lg:inline">Usuários</span>
-              </button>
-
-              {/* Auditoria */}
-              {isManager && (
-                <button
-                  onClick={() => onNavigate ? onNavigate('audit') : onBack()}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-white/30 transition-all duration-200"
-                >
-                  <FileText className="w-4 h-4 text-slate-700" />
-                  <span className="hidden lg:inline">Auditoria</span>
-                </button>
-              )}
-            </nav>
-
-            {/* ── Lado direito: Perfil + Sair ── */}
-            <div className="flex items-center gap-3">
-              {/* Separador */}
-              <div className="w-px h-8 bg-slate-300/50 hidden sm:block" />
-
-              {/* Avatar + nome */}
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-800 ring-2 ring-white/30 shadow-md">
-                  <span className="text-sm font-bold text-white uppercase">
-                    {user?.name?.charAt(0) || '?'}
-                  </span>
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-semibold text-slate-800 leading-tight">
-                    {user?.name}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    {isManager ? (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-600 bg-slate-200/60 px-1.5 py-0.5 rounded-full">
-                        <Shield className="w-2.5 h-2.5" />
-                        Gestor
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-500">Funcionário</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Sair */}
-              <button
-                onClick={logout}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-red-500 hover:bg-red-50/50 transition-all duration-200"
-                title="Sair"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden lg:inline">Sair</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        currentPage="users"
+        onNavigate={handleNavigate}
+        tasks={[]}
+      />
 
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
