@@ -13,10 +13,19 @@ const app = express();
 app.use(helmet());
 
 // CORS
-app.use(cors({
-  origin: env.CORS_ORIGIN,
-  credentials: true,
-}));
+// Em desenvolvimento, aceita qualquer origem (incluindo IPs da rede)
+// Em produção, usa apenas as origens configuradas
+const corsOptions = env.NODE_ENV === 'development' 
+  ? {
+      origin: true, // Aceita qualquer origem em dev
+      credentials: true,
+    }
+  : {
+      origin: env.CORS_ORIGIN,
+      credentials: true,
+    };
+
+app.use(cors(corsOptions));
 
 // Parse JSON
 app.use(express.json());

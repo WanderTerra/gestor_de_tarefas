@@ -25,7 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .then(({ user: userData }) => {
           setUser(userData);
         })
-        .catch(() => {
+        .catch((error) => {
+          // Se for 404, pode ser que o backend não esteja rodando
+          // Limpar token e continuar normalmente
+          console.warn('Erro ao verificar autenticação:', error);
           setToken(null);
           setUser(null);
         })

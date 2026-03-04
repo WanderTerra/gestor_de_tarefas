@@ -2,7 +2,40 @@ import { Task, TaskStatus } from '@/types/task';
 import { User, AuthResponse, AuditResponse } from '@/types/user';
 
 // Em produção usa sempre /api (mesmo domínio). Em dev usa VITE_API_URL se existir, senão /api.
-const API_URL = import.meta.env.DEV ? (import.meta.env.VITE_API_URL || '/api') : '/api';
+// Se estiver sendo acessado por IP da rede (não localhost), tenta usar o mesmo IP para o backend
+function getApiUrl(): string {
+  if (!import.meta.env.DEV) {
+    return '/api';
+  }
+
+  // Se VITE_API_URL estiver definida, usa ela
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Detecta se está sendo acessado por IP da rede
+  const hostname = window.location.hostname;
+  const isNetworkAccess = hostname !== 'localhost' && hostname !== '127.0.0.1';
+  
+  if (isNetworkAccess) {
+    // Se estiver sendo acessado pela rede, tenta usar o mesmo IP com porta do backend
+    // O proxy do Vite pode não funcionar quando acessado por IP, então usa URL completa
+    const backendUrl = `http://${hostname}:3001/api`;
+    console.log('🌐 Acesso pela rede detectado. Usando backend em:', backendUrl);
+    console.log('💡 Certifique-se de que o backend está acessível neste IP e porta 3001');
+    return backendUrl;
+  }
+
+  // Caso padrão: usa /api (que será redirecionado pelo proxy do Vite para localhost:3001)
+  return '/api';
+}
+
+const API_URL = getApiUrl();
+
+// Log da URL da API em desenvolvimento para debug
+if (import.meta.env.DEV) {
+  console.log('🔧 API_URL configurada como:', API_URL);
+}
 
 // ─── Token Management ──────────────────────────────────────────────
 
@@ -77,11 +110,30 @@ function authHeaders(): Record<string, string> {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
+    let body: any = {};
+    try {
+      const text = await response.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      // Se não conseguir fazer parse, usar mensagem padrão
+      body = {};
+    }
 
     // Se 401, limpar token (sessão expirada)
     if (response.status === 401) {
       setToken(null);
+    }
+
+    // Se 404, mensagem mais clara
+    if (response.status === 404) {
+      const isDev = import.meta.env.DEV;
+      const message = body.error || body.message || 
+        (isDev 
+          ? 'Backend não encontrado. Verifique se o servidor está rodando na porta 3001.'
+          : 'Endpoint não encontrado. Verifique a configuração do servidor.');
+      throw new ApiError(response.status, message, body.details);
     }
 
     throw new ApiError(
@@ -99,32 +151,54 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+// ─── Helper para fazer requisições com tratamento de erro de rede ────
+
+async function fetchWithErrorHandling<T>(
+  url: string,
+  options?: RequestInit
+): Promise<T> {
+  try {
+    const response = await fetch(url, options);
+    return handleResponse<T>(response);
+  } catch (error) {
+    // Se for erro de rede (não é ApiError), converter para ApiError
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    // Erro de rede (fetch falhou completamente)
+    const isDev = import.meta.env.DEV;
+    throw new ApiError(
+      0,
+      isDev
+        ? `Erro de conexão. Verifique se o backend está rodando em http://localhost:3001`
+        : 'Erro de conexão com o servidor. Tente novamente mais tarde.',
+    );
+  }
+}
+
 // ─── Auth API ────────────────────────────────────────────────────────
 
 export const authApi = {
   async register(username: string, password: string, name: string): Promise<{ message: string; user: User }> {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    return fetchWithErrorHandling<{ message: string; user: User }>(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, name }),
     });
-    return handleResponse<{ message: string; user: User }>(response);
   },
 
   async login(username: string, password: string): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    return fetchWithErrorHandling<AuthResponse>(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    return handleResponse<AuthResponse>(response);
   },
 
   async me(): Promise<{ user: User }> {
-    const response = await fetch(`${API_URL}/auth/me`, {
+    return fetchWithErrorHandling<{ user: User }>(`${API_URL}/auth/me`, {
       headers: authHeaders(),
     });
-    return handleResponse<{ user: User }>(response);
   },
 
   async getPendingRequests(): Promise<User[]> {
