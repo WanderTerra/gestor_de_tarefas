@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertCircle, ChevronLeft, ChevronRight, FileText, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronLeft, ChevronRight, FileText, ChevronDown, ChevronUp, Clock, CalendarCheck } from 'lucide-react';
 import { AuditLog } from '@/types/user';
 import { auditApi, ApiError } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 
 interface AuditLogViewProps {
@@ -142,7 +141,6 @@ function formatDetailText(log: AuditLog, details: Record<string, unknown> | null
 }
 
 const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
-  const { isManager } = useAuth();
 
   const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
     if (navPage === 'audit') {

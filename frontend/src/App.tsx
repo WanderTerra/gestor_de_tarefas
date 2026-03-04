@@ -80,8 +80,6 @@ const TaskApp: React.FC = () => {
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [flippedCard, setFlippedCard] = useState<number | null>(null);
-  const [pendingStatus, setPendingStatus] = useState<TaskStatus | null>(null);
-  const [tempReason, setTempReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -181,8 +179,6 @@ const TaskApp: React.FC = () => {
   const handleStatusChange = useCallback(async (taskId: number, newStatus: TaskStatus) => {
     if (newStatus === 'not-executed' || newStatus === 'waiting') {
       setFlippedCard(taskId);
-      setPendingStatus(newStatus);
-      setTempReason('');
     } else {
       setFadingCards((prev) => new Set(prev).add(taskId));
       await changeStatus(taskId, newStatus);
@@ -196,38 +192,6 @@ const TaskApp: React.FC = () => {
     }
   }, [changeStatus]);
 
-  const handleReasonSubmit = useCallback(async (taskId: number) => {
-    if (!tempReason.trim() || !pendingStatus) return;
-    setSaving(true);
-    try {
-      setFadingCards((prev) => new Set(prev).add(taskId));
-      const shouldFade = isTerminalStatus(pendingStatus);
-      await changeStatus(taskId, pendingStatus, tempReason);
-      setFlippedCard(null);
-      setPendingStatus(null);
-      setTempReason('');
-      if (shouldFade) {
-        setTimeout(() => {
-          setFadingCards((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(taskId);
-            return newSet;
-          });
-        }, 500);
-      }
-    } catch (err) {
-      console.error('Erro ao atualizar status:', err);
-    } finally {
-      setSaving(false);
-    }
-  }, [changeStatus, tempReason, pendingStatus, isTerminalStatus]);
-
-  const handleCancelReason = useCallback(() => {
-    setFlippedCard(null);
-    setPendingStatus(null);
-    setTempReason('');
-  }, []);
-
   const handleDelete = async (taskId: number) => {
     setDeleting(true);
     try {
@@ -238,16 +202,6 @@ const TaskApp: React.FC = () => {
     } finally {
       setDeleting(false);
     }
-  };
-
-  const dayMap: Record<string, string> = {
-    'sunday': 'Dom', 'monday': 'Seg', 'tuesday': 'Ter', 'wednesday': 'Qua',
-    'thursday': 'Qui', 'friday': 'Sex', 'saturday': 'Sáb'
-  };
-
-  const formatRecurringDays = (days: string[] | undefined) => {
-    if (!days || days.length === 0) return 'Nenhum';
-    return days.map(d => dayMap[d] || d).join(', ');
   };
 
   const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {

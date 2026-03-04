@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Loader2, AlertCircle, UserPlus } from 'lucide-react';
 import { User, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 
 interface UserManagementProps {
@@ -17,7 +16,6 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) => {
-  const { isManager } = useAuth();
 
   const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
     if (navPage === 'users') {

@@ -87,6 +87,8 @@ function isValidBRDate(brDate: string): boolean {
 }
 
 const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavigate }) => {
+  const { isManager } = useAuth();
+  
   const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
     if (navPage === 'completed') {
       // Já estamos na página de concluídas

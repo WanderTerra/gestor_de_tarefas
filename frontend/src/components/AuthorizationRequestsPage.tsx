@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, AlertCircle, CheckCircle2, XCircle, UserPlus, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { User } from '@/types/user';
 import { authApi } from '@/services/api';
 import Header from '@/components/Header';
