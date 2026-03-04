@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { User } from '@/types/user';
 import { authApi } from '@/services/api';
 import Header from '@/components/Header';
@@ -94,6 +94,16 @@ const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ o
     });
   };
 
+  const isOverdue = (requestedAt?: string): boolean => {
+    if (!requestedAt) return false;
+    const requestDate = new Date(requestedAt);
+    const now = new Date();
+    const diffTime = now.getTime() - requestDate.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    // Considera atrasado se passou mais de 3 dias
+    return diffDays > 3;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -143,18 +153,55 @@ const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ o
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base font-semibold">{request.name}</CardTitle>
-                    <Badge
-                      variant="outline"
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: 'rgba(250, 204, 21, 0.6)',
-                      }}
-                    >
-                      <Clock className="w-3 h-3 mr-1" />
-                      Pendente
-                    </Badge>
+                    <div className="flex flex-col gap-1 items-end">
+                      {isOverdue(request.requestedAt) ? (
+                        <Badge
+                          variant="outline"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(12px) saturate(180%)',
+                            WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'rgba(248, 113, 113, 0.6)',
+                            boxShadow: `
+                              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                              inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                              inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                              0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                              0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                              0 0 8px 0 rgba(248, 113, 113, 0.15)
+                            `,
+                          }}
+                        >
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          Atrasado
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(12px) saturate(180%)',
+                            WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'rgba(250, 204, 21, 0.6)',
+                            boxShadow: `
+                              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                              inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                              inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                              0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                              0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                              0 0 8px 0 rgba(250, 204, 21, 0.15)
+                            `,
+                          }}
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Pendente
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

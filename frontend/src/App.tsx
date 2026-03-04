@@ -96,6 +96,20 @@ const TaskApp: React.FC = () => {
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [fadingCards, setFadingCards] = useState<Set<number>>(new Set());
 
+  // Relógio que atualiza a cada minuto para verificar horários limite
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    }, 30_000); // Atualiza a cada 30s
+    return () => clearInterval(interval);
+  }, []);
+
   const daysOfWeek = [
     { id: 'dom', label: 'Dom' },
     { id: 'seg', label: 'Seg' },
@@ -132,6 +146,22 @@ const TaskApp: React.FC = () => {
     return days.split(',').map(d => dayMap[d] || d).join(', ');
   };
 
+  /** Verifica se uma tarefa está atrasada (horário limite ultrapassado OU flag isOverdue do backend) */
+  const isTaskOverdue = useCallback(
+    (task: Task): boolean => {
+      // Tarefa concluída nunca mostra atrasada
+      if (task.status === 'completed') return false;
+      // Se o backend já marcou como atrasada (dia anterior), respeitar
+      if (task.isOverdue) return true;
+      // Verificar horário limite do dia atual
+      if (task.timeLimit) {
+        return currentTime >= task.timeLimit;
+      }
+      return false;
+    },
+    [currentTime],
+  );
+
   const activeTasks = tasks.filter(
     (t) => !isTerminalStatus(t.status) || fadingCards.has(t.id),
   );
@@ -156,7 +186,7 @@ const TaskApp: React.FC = () => {
     if (!loading && tasks.length > 0) {
       checkOverdueTasks(tasks);
     }
-  }, [tasks, loading, checkOverdueTasks]);
+  }, [tasks, loading, checkOverdueTasks, currentTime]); // Incluir currentTime para verificar quando horário muda
 
   useEffect(() => {
     if (!loading && overdueAlerts.length >= 0) {
@@ -551,7 +581,39 @@ const TaskApp: React.FC = () => {
                         }
                       }}
                     >
-                      <CardHeader className="pb-3 relative">
+                      {/* Tarja Diagonal - Atrasado (isOverdue do backend OU horário limite ultrapassado) */}
+                      {isTaskOverdue(task) && (
+                        <div className="absolute top-0 left-0 pointer-events-none z-10" style={{ width: '150px', height: '150px', overflow: 'hidden' }}>
+                          <div 
+                            className="absolute text-white text-[10px] py-1 tracking-wide leading-none" 
+                            style={{ 
+                              top: '26px', 
+                              left: '-56px', 
+                              width: '180px', 
+                              transform: 'rotate(-45deg)', 
+                              textAlign: 'center',
+                              fontWeight: 800,
+                              fontFamily: 'system-ui, -apple-system, sans-serif',
+                              background: 'linear-gradient(135deg, rgba(248, 113, 113, 0.95) 0%, rgba(239, 68, 68, 0.95) 100%)',
+                              backdropFilter: 'blur(10px)',
+                              WebkitBackdropFilter: 'blur(10px)',
+                              border: '1px solid rgba(255, 255, 255, 0.3)',
+                              boxShadow: `
+                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.15),
+                                inset 1px 0 0 0 rgba(255, 255, 255, 0.3),
+                                inset -1px 0 0 0 rgba(0, 0, 0, 0.12),
+                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                              `,
+                            }}
+                          >
+                            ATRASADO
+                          </div>
+                        </div>
+                      )}
+
+                      <CardHeader className={`pb-3 relative ${isTaskOverdue(task) ? 'pt-8' : ''}`}>
                         {isManager && (
                           <div className="absolute top-0 right-0 flex gap-1 z-10">
                             <Button
