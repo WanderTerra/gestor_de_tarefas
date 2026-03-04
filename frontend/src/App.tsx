@@ -668,21 +668,11 @@ const TaskApp: React.FC = () => {
               className="flex items-center gap-3 group focus:outline-none"
               title="Voltar para Tarefas"
             >
-              <div 
-                className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-md group-hover:scale-105 transition-transform flex-shrink-0"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  boxShadow: `
-                    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-                    0 2px 8px 0 rgba(0, 0, 0, 0.15)
-                  `,
-                }}
-              >
+              <div className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
                 <img
                   src="/logosemfundo.png"
                   alt="Logo Gestor de Tarefas"
-                  className="w-full h-full object-contain p-0.5"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="hidden sm:block text-left">
