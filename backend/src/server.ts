@@ -14,14 +14,17 @@ app.use(helmet());
 
 // CORS
 // Em desenvolvimento, aceita qualquer origem (incluindo IPs da rede)
-// Em produção, usa apenas as origens configuradas
-const corsOptions = env.NODE_ENV === 'development' 
+// Em produção, usa apenas as origens configuradas (seguro)
+// IMPORTANTE: Por padrão, assume produção (mais seguro). 
+// Só aceita qualquer origem se NODE_ENV for explicitamente 'development'
+const isDevelopment = env.NODE_ENV === 'development';
+const corsOptions = isDevelopment
   ? {
       origin: true, // Aceita qualquer origem em dev
       credentials: true,
     }
   : {
-      origin: env.CORS_ORIGIN,
+      origin: env.CORS_ORIGIN, // Em produção: apenas origens configuradas
       credentials: true,
     };
 
