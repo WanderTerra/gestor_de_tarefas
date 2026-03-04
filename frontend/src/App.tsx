@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Plus, Clock, Loader2, AlertCircle, RefreshCw,
   LogOut, Pencil, Trash2, Bell, XIcon,
-  LayoutDashboard, Shield, CalendarCheck, Repeat, UserCircle, AlertTriangle,
+  Shield, CalendarCheck, Repeat, UserCircle, AlertTriangle,
   BadgeCheck, Users, FileSearch, ClipboardCheck, UserPlus,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
@@ -669,9 +669,9 @@ const TaskApp: React.FC = () => {
               title="Voltar para Tarefas"
             >
               <div 
-                className="flex items-center justify-center w-10 h-10 rounded-xl shadow-md group-hover:scale-105 transition-transform"
+                className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-md group-hover:scale-105 transition-transform flex-shrink-0"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
                   boxShadow: `
                     inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
@@ -679,7 +679,11 @@ const TaskApp: React.FC = () => {
                   `,
                 }}
               >
-                <LayoutDashboard className="w-5 h-5 text-white" />
+                <img
+                  src="/logosemfundo.png"
+                  alt="Logo Gestor de Tarefas"
+                  className="w-full h-full object-contain p-0.5"
+                />
               </div>
               <div className="hidden sm:block text-left">
                 <h1 className="text-lg font-bold text-slate-800 leading-tight tracking-tight group-hover:text-slate-900 transition-colors">
