@@ -4,12 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2,
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
-import { taskApi } from '@/services/api';
+import { taskApi, userApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
+import EditTaskDialog from '@/components/EditTaskDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { User } from '@/types/user';
 
 interface CompletedTasksPageProps {
   onBack: () => void;
@@ -104,6 +107,11 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [employees, setEmployees] = useState<User[]>([]);
+  const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
 
   // Filtro de datas — default: hoje (formato brasileiro)
   const [dateFrom, setDateFrom] = useState(() => todayBR());
@@ -149,6 +157,42 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
       dom: 'Dom', seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb',
     };
     return days.split(',').map(d => dayMap[d] || d).join(', ');
+  };
+
+  // Carregar funcionários para o dialog de edição
+  useEffect(() => {
+    if (isManager) {
+      userApi.getAll().then(setEmployees).catch(() => {});
+    }
+  }, [isManager]);
+
+  // Função para atualizar tarefa
+  const handleUpdateTask = async (taskId: number, data: Partial<Task>) => {
+    try {
+      const updated = await taskApi.update(taskId, data);
+      setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+      setEditTask(null);
+    } catch (err) {
+      console.error('Erro ao atualizar tarefa:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar tarefa');
+    }
+  };
+
+  // Função para deletar tarefa
+  const handleDeleteTask = async () => {
+    if (!deleteConfirm) return;
+    
+    try {
+      setDeleting(true);
+      await taskApi.delete(deleteConfirm.id);
+      setTasks(prev => prev.filter(t => t.id !== deleteConfirm.id));
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('Erro ao deletar tarefa:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao deletar tarefa');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Agrupar por data de conclusão
@@ -378,55 +422,111 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
                                  `,
                                }}
-                               onMouseEnter={(e) => {
-                                 e.currentTarget.style.boxShadow = `
-                                   inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                                   0 0 0 1px rgba(255, 255, 255, 0.3),
-                                   0 0 20px rgba(255, 255, 255, 0.15),
-                                   0 8px 24px 0 rgba(0, 0, 0, 0.12),
-                                   0 2px 8px 0 rgba(0, 0, 0, 0.06),
-                                   inset 0 -1px 0 0 rgba(0, 0, 0, 0.06)
-                                 `;
-                                 e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                               onMouseEnter={() => {
+                                 setHoveredCardId(task.id);
                                }}
-                               onMouseLeave={(e) => {
-                                 e.currentTarget.style.boxShadow = `
-                                   inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                   0 0 0 1px rgba(255, 255, 255, 0.2),
-                                   0 0 15px rgba(255, 255, 255, 0.1),
-                                   0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                                   0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                                   inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                                 `;
-                                 e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                               onMouseLeave={() => {
+                                 setHoveredCardId(null);
                                }}
                              >
-                          <CardHeader className="pb-3">
+                          <CardHeader className="pb-3 relative pt-8">
+                            {/* Badge no canto superior esquerdo */}
+                            <div className="absolute top-0 left-6 z-10">
+                              <Badge 
+                                variant="outline"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  backdropFilter: 'blur(12px) saturate(180%)',
+                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
+                                  boxShadow: `
+                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                    0 0 8px 0 rgba(${getStatusColorRGB(task.status)}, 0.15)
+                                  `,
+                                }}
+                              >
+                                {config.label}
+                              </Badge>
+                            </div>
+
+                            {/* Botões no canto superior direito */}
+                            {isManager && hoveredCardId === task.id && (
+                              <div className="absolute top-0 right-0 flex gap-1 z-10 transition-opacity duration-200">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-70 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditTask(task);
+                                  }}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(8px)',
+                                    WebkitBackdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    boxShadow: `
+                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                    `,
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                  }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-70 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirm(task);
+                                  }}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(8px)',
+                                    WebkitBackdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: 'rgba(239, 68, 68, 0.7)',
+                                    boxShadow: `
+                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                    `,
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'rgba(239, 68, 68, 0.9)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'rgba(239, 68, 68, 0.7)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Título do card */}
                             <div className="flex items-start justify-between gap-2">
                               <CardTitle className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh]">
                                 {task.name}
                               </CardTitle>
-                                   <Badge 
-                                     variant="outline"
-                                     style={{
-                                       background: 'rgba(255, 255, 255, 0.1)',
-                                       backdropFilter: 'blur(12px) saturate(180%)',
-                                       WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                       border: '1px solid rgba(255, 255, 255, 0.2)',
-                                       color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
-                                       boxShadow: `
-                                         inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                         inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                         inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                         inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                         0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                         0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                         0 0 8px 0 rgba(${getStatusColorRGB(task.status)}, 0.15)
-                                       `,
-                                     }}
-                                   >
-                                     {config.label}
-                                   </Badge>
                             </div>
                           </CardHeader>
                           <CardContent className="flex-1 flex flex-col space-y-3">
@@ -543,6 +643,53 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
           </div>
         )}
       </div>
+
+      {/* Dialog de edição */}
+      <EditTaskDialog
+        task={editTask}
+        open={!!editTask}
+        onOpenChange={(open) => { if (!open) setEditTask(null); }}
+        onSave={handleUpdateTask}
+        employees={employees}
+      />
+
+      {/* Dialog de confirmação de deleção */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja excluir a tarefa <strong>"{deleteConfirm?.name}"</strong>?
+              Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteTask}
+                className="flex-1"
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="flex-1">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

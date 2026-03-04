@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
   CalendarCheck, BadgeCheck, Users, UserPlus, FileSearch, 
-  Bell, LogOut, ClipboardCheck
+  Bell, LogOut, ClipboardCheck, Shield
 } from 'lucide-react';
 import { useButtonInteraction } from '@/hooks/useButtonInteraction';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,7 +73,7 @@ const NavButton: React.FC<{
 };
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], isTerminalStatus }) => {
-  const { logout, isManager } = useAuth();
+  const { logout, isManager, user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [pendingRequests, setPendingRequests] = useState<User[]>([]);
@@ -387,6 +387,54 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
                 )}
               </div>
             )}
+
+            {/* Separador */}
+            <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
+
+            {/* Avatar + nome */}
+            <div className="flex items-center gap-2.5">
+              <div 
+                className="flex items-center justify-center w-9 h-9 rounded-full shadow-md"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: `
+                    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+                    0 2px 8px 0 rgba(0, 0, 0, 0.15)
+                  `,
+                }}
+              >
+                <span className="text-sm font-bold text-white uppercase">
+                  {user?.name?.charAt(0) || '?'}
+                </span>
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-sm font-semibold leading-tight" style={{ color: 'rgba(0, 0, 0, 0.9)' }}>
+                  {user?.name}
+                </p>
+                <div className="flex items-center gap-1">
+                  {isManager ? (
+                    <span 
+                      className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.3)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        color: 'rgba(0, 0, 0, 0.7)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                          0 1px 2px 0 rgba(0, 0, 0, 0.05)
+                        `,
+                      }}
+                    >
+                      <Shield className="w-2.5 h-2.5" />
+                      Gestor
+                    </span>
+                  ) : (
+                    <span className="text-[10px]" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>Funcionário</span>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Separador */}
             <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />

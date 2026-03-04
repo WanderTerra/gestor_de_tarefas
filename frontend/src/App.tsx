@@ -93,6 +93,7 @@ const TaskApp: React.FC = () => {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [fadingCards, setFadingCards] = useState<Set<number>>(new Set());
 
@@ -571,6 +572,7 @@ const TaskApp: React.FC = () => {
                       }}
                       onMouseEnter={(e) => {
                         if (!isFlipped) {
+                          setHoveredCardId(task.id);
                           e.currentTarget.style.boxShadow = `
                             inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
                             0 0 0 1px rgba(255, 255, 255, 0.3),
@@ -584,6 +586,7 @@ const TaskApp: React.FC = () => {
                       }}
                       onMouseLeave={(e) => {
                         if (!isFlipped) {
+                          setHoveredCardId(null);
                           e.currentTarget.style.boxShadow = `
                             inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
                             0 0 0 1px rgba(255, 255, 255, 0.2),
@@ -628,49 +631,9 @@ const TaskApp: React.FC = () => {
                         </div>
                       )}
 
-                      <CardHeader className={`pb-3 relative ${isTaskOverdue(task) ? 'pt-8' : ''}`}>
-                        {isManager && (
-                          <div className="absolute top-0 right-0 flex gap-1 z-10">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-70 hover:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditTask(task);
-                              }}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                backdropFilter: 'blur(8px)',
-                                WebkitBackdropFilter: 'blur(8px)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-70 hover:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirm(task);
-                              }}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                backdropFilter: 'blur(8px)',
-                                WebkitBackdropFilter: 'blur(8px)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                        <div className="flex items-start justify-between gap-2 pr-16">
-                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh]">
-                            {task.name}
-                          </CardTitle>
+                      <CardHeader className="pb-3 relative pt-8">
+                        {/* Badge no canto superior esquerdo */}
+                        <div className="absolute top-0 left-6 z-10">
                           <Badge
                             variant="outline"
                             style={{
@@ -692,6 +655,80 @@ const TaskApp: React.FC = () => {
                           >
                             {config.label}
                           </Badge>
+                        </div>
+
+                        {/* Botões no canto superior direito */}
+                        {isManager && hoveredCardId === task.id && (
+                          <div className="absolute top-0 right-0 flex gap-1 z-10 transition-opacity duration-200">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-70 hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditTask(task);
+                              }}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                boxShadow: `
+                                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                  0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                `,
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-70 hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm(task);
+                              }}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                color: 'rgba(239, 68, 68, 0.7)',
+                                boxShadow: `
+                                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                  0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                `,
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'rgba(239, 68, 68, 0.9)';
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'rgba(239, 68, 68, 0.7)';
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Título do card */}
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh]">
+                            {task.name}
+                          </CardTitle>
                         </div>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col space-y-3">
