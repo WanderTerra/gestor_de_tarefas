@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Loader2, AlertCircle,
-  CheckCircle2, XCircle,
+  CheckCircle2, Clock,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
 import { User, getRoleLabel } from '@/types/user';
@@ -107,6 +107,27 @@ const TaskApp: React.FC = () => {
     (status: TaskStatus) => status === 'completed' || status === 'not-executed',
     [],
   );
+
+  /** Helper para obter cor RGB do status para badges de vidro transparente (cores suaves/pastéis) */
+  const getStatusColorRGB = (status: TaskStatus): string => {
+    const colorMap: Record<TaskStatus, string> = {
+      'pending': '250, 204, 21',      // yellow-400 (mais suave)
+      'in-progress': '96, 165, 250',  // blue-400 (mais suave)
+      'waiting': '251, 146, 60',      // orange-400 (mais suave)
+      'completed': '74, 222, 128',     // green-400 (mais suave)
+      'not-executed': '248, 113, 113', // red-400 (mais suave)
+    };
+    return colorMap[status] || '148, 163, 184';
+  };
+
+  /** Converte string "seg,qua,sex" em labels legíveis */
+  const formatRecurringDays = (days: string | null | undefined): string => {
+    if (!days) return '';
+    const dayMap: Record<string, string> = {
+      dom: 'Dom', seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb',
+    };
+    return days.split(',').map(d => dayMap[d] || d).join(', ');
+  };
 
   const activeTasks = tasks.filter(
     (t) => !isTerminalStatus(t.status) || fadingCards.has(t.id),
@@ -273,7 +294,33 @@ const TaskApp: React.FC = () => {
           <div className="flex items-center justify-end">
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetDialog(); }}>
               <DialogTrigger asChild>
-                <Button size="default" className="gap-2">
+                <Button
+                  size="default"
+                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
+                    backdropFilter: 'blur(12px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: 'rgba(15, 23, 42, 0.9)',
+                    boxShadow: `
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                      inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                      inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                      0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                      0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                    `,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                  }}
+                >
                   <Plus className="w-4 h-4" />
                   Nova Tarefa
                 </Button>
@@ -414,35 +461,181 @@ const TaskApp: React.FC = () => {
                     }`}
                     style={{ transformStyle: 'preserve-3d' }}
                   >
-                    <Card className="h-full flex flex-col">
-                      <CardHeader>
-                        <CardTitle className="text-sm font-medium">{task.name}</CardTitle>
-                        <Badge>{config.label}</Badge>
+                    <Card
+                      className="h-full flex flex-col transition-all duration-200 group backface-hidden overflow-hidden"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
+                        backdropFilter: 'blur(20px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 15px rgba(255, 255, 255, 0.1),
+                          0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                          0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                        `,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                          0 0 0 1px rgba(255, 255, 255, 0.3),
+                          0 0 20px rgba(255, 255, 255, 0.15),
+                          0 8px 24px 0 rgba(0, 0, 0, 0.12),
+                          0 2px 8px 0 rgba(0, 0, 0, 0.06),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.06)
+                        `;
+                        e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 15px rgba(255, 255, 255, 0.1),
+                          0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                          0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                        `;
+                        e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                      }}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh]">
+                            {task.name}
+                          </CardTitle>
+                          <Badge
+                            variant="outline"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              backdropFilter: 'blur(12px) saturate(180%)',
+                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
+                              boxShadow: `
+                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                0 0 8px 0 rgba(${getStatusColorRGB(task.status)}, 0.15)
+                              `,
+                            }}
+                          >
+                            {config.label}
+                          </Badge>
+                        </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="flex-1 flex flex-col space-y-3">
                         {task.description && (
-                          <p className="text-sm text-slate-600">{task.description}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {task.description}
+                          </p>
                         )}
-                        <div className="mt-4 flex justify-end gap-2">
-                          {!isTerminalStatus(task.status) && (
-                            <>
-                              <Button
+
+                        {/* Info de atribuição */}
+                        {task.assignedTo && isManager && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              backdropFilter: 'blur(12px) saturate(180%)',
+                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              color: 'rgba(71, 85, 105, 0.6)',
+                              boxShadow: `
+                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                0 0 8px 0 rgba(71, 85, 105, 0.15)
+                              `,
+                            }}
+                          >
+                            👤 {task.assignedTo.name}
+                          </Badge>
+                        )}
+
+                        {/* Info de recorrência e horário limite */}
+                        {(task.isRecurring || task.timeLimit) && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {task.isRecurring && task.recurringDays && (
+                              <Badge
                                 variant="secondary"
-                                size="sm"
-                                onClick={() => handleStatusChange(task.id, 'completed')}
+                                className="text-xs gap-1"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  backdropFilter: 'blur(12px) saturate(180%)',
+                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: 'rgba(109, 40, 217, 0.6)',
+                                  boxShadow: `
+                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                    0 0 8px 0 rgba(109, 40, 217, 0.15)
+                                  `,
+                                }}
                               >
-                                <CheckCircle2 className="w-4 h-4" />
-                                Concluir
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(task.id, 'not-executed')}
+                                🔁 {formatRecurringDays(task.recurringDays)}
+                              </Badge>
+                            )}
+                            {task.timeLimit && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs gap-1"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  backdropFilter: 'blur(12px) saturate(180%)',
+                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: 'rgba(37, 99, 235, 0.6)',
+                                  boxShadow: `
+                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                    0 0 8px 0 rgba(37, 99, 235, 0.15)
+                                  `,
+                                }}
                               >
-                                <XCircle className="w-4 h-4" />
-                                Não Executar
-                              </Button>
-                            </>
+                                <Clock className="w-3 h-3" />
+                                {task.timeLimit}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Espaçador flexível */}
+                        <div className="flex-1" />
+
+                        <div className="mt-4">
+                          {!isTerminalStatus(task.status) && (
+                            <Select
+                              value={task.status}
+                              onValueChange={(value) => handleStatusChange(task.id, value as TaskStatus)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Alterar status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pendente</SelectItem>
+                                <SelectItem value="in-progress">Em andamento</SelectItem>
+                                <SelectItem value="waiting">Aguardando ação</SelectItem>
+                                <SelectItem value="completed">Concluído</SelectItem>
+                                <SelectItem value="not-executed">Não executado</SelectItem>
+                              </SelectContent>
+                            </Select>
                           )}
                         </div>
                       </CardContent>
