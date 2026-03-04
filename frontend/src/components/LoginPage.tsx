@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginPageProps {
@@ -13,6 +13,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onRegister }) => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,50 +144,61 @@ const LoginPage: React.FC<LoginPageProps> = ({ onRegister }) => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium" style={{ color: 'rgba(15, 23, 42, 0.8)' }}>Senha</label>
-                <Input
-                  type="password"
-                  placeholder="Digite sua senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  disabled={loading}
-                  className="border-0"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
-                    backdropFilter: 'blur(20px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                    border: '1px solid rgba(255, 255, 255, 0.25)',
-                    boxShadow: `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
-                      0 0 0 1px rgba(255, 255, 255, 0.15),
-                      0 0 20px rgba(255, 255, 255, 0.1),
-                      0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                    `,
-                    color: 'rgba(15, 23, 42, 0.9)',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow = `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                      0 0 0 1px rgba(255, 255, 255, 0.3),
-                      0 0 30px rgba(255, 255, 255, 0.15),
-                      0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                    `;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow = `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
-                      0 0 0 1px rgba(255, 255, 255, 0.15),
-                      0 0 20px rgba(255, 255, 255, 0.1),
-                      0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                    `;
-                  }}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Digite sua senha"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    disabled={loading}
+                    className="border-0 pr-10"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+                      backdropFilter: 'blur(20px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      boxShadow: `
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+                        0 0 0 1px rgba(255, 255, 255, 0.15),
+                        0 0 20px rgba(255, 255, 255, 0.1),
+                        0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                        0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                      `,
+                      color: 'rgba(15, 23, 42, 0.9)',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.boxShadow = `
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                        0 0 0 1px rgba(255, 255, 255, 0.3),
+                        0 0 30px rgba(255, 255, 255, 0.15),
+                        0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                        0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                      `;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.boxShadow = `
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+                        0 0 0 1px rgba(255, 255, 255, 0.15),
+                        0 0 20px rgba(255, 255, 255, 0.1),
+                        0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                        0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                      `;
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-500 hover:text-slate-700 focus:outline-none"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <Button
