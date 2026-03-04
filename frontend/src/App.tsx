@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -80,7 +80,10 @@ const TaskApp: React.FC = () => {
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [flippedCard, setFlippedCard] = useState<number | null>(null);
+  const [flippedCardReason, setFlippedCardReason] = useState<string>('');
+  const [flippedCardStatus, setFlippedCardStatus] = useState<TaskStatus | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingReason, setSavingReason] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [hasTimeLimit, setHasTimeLimit] = useState(false);
@@ -94,13 +97,13 @@ const TaskApp: React.FC = () => {
   const [fadingCards, setFadingCards] = useState<Set<number>>(new Set());
 
   const daysOfWeek = [
-    { id: 'sunday', label: 'Dom' },
-    { id: 'monday', label: 'Seg' },
-    { id: 'tuesday', label: 'Ter' },
-    { id: 'wednesday', label: 'Qua' },
-    { id: 'thursday', label: 'Qui' },
-    { id: 'friday', label: 'Sex' },
-    { id: 'saturday', label: 'Sáb' },
+    { id: 'dom', label: 'Dom' },
+    { id: 'seg', label: 'Seg' },
+    { id: 'ter', label: 'Ter' },
+    { id: 'qua', label: 'Qua' },
+    { id: 'qui', label: 'Qui' },
+    { id: 'sex', label: 'Sex' },
+    { id: 'sab', label: 'Sáb' },
   ];
 
   const isTerminalStatus = useCallback(
@@ -198,9 +201,14 @@ const TaskApp: React.FC = () => {
   };
 
   const handleStatusChange = useCallback(async (taskId: number, newStatus: TaskStatus) => {
-    if (newStatus === 'not-executed' || newStatus === 'waiting') {
+    const config = statusConfig[newStatus];
+    if (config?.requiresReason) {
+      // Status que requer motivo: girar o card e pedir o motivo
       setFlippedCard(taskId);
+      setFlippedCardStatus(newStatus);
+      setFlippedCardReason('');
     } else {
+      // Status que não requer motivo: mudar diretamente
       setFadingCards((prev) => new Set(prev).add(taskId));
       await changeStatus(taskId, newStatus);
       setTimeout(() => {
@@ -212,6 +220,36 @@ const TaskApp: React.FC = () => {
       }, 500);
     }
   }, [changeStatus]);
+
+  const handleConfirmReason = useCallback(async (taskId: number) => {
+    if (!flippedCardReason.trim() || !flippedCardStatus) return;
+    
+    setSavingReason(true);
+    try {
+      setFadingCards((prev) => new Set(prev).add(taskId));
+      await changeStatus(taskId, flippedCardStatus, flippedCardReason.trim());
+      setFlippedCard(null);
+      setFlippedCardReason('');
+      setFlippedCardStatus(null);
+      setTimeout(() => {
+        setFadingCards((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(taskId);
+          return newSet;
+        });
+      }, 500);
+    } catch (err) {
+      console.error('Erro ao salvar motivo:', err);
+    } finally {
+      setSavingReason(false);
+    }
+  }, [flippedCardReason, flippedCardStatus, changeStatus]);
+
+  const handleCancelReason = useCallback(() => {
+    setFlippedCard(null);
+    setFlippedCardReason('');
+    setFlippedCardStatus(null);
+  }, []);
 
   const handleDelete = async (taskId: number) => {
     setDeleting(true);
@@ -328,6 +366,9 @@ const TaskApp: React.FC = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Criar Nova Tarefa</DialogTitle>
+                  <DialogDescription>
+                    Preencha os campos abaixo para criar uma nova tarefa
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="space-y-2">
@@ -456,11 +497,14 @@ const TaskApp: React.FC = () => {
                   style={{ perspective: '1000px' }}
                 >
                   <div
-                    className={`relative w-full h-full transition-transform duration-500 ${
-                      isFlipped ? 'rotate-y-180' : ''
-                    }`}
-                    style={{ transformStyle: 'preserve-3d' }}
+                    className="relative w-full h-full"
+                    style={{
+                      transformStyle: 'preserve-3d',
+                      transition: 'transform 0.6s ease-in-out',
+                      transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    }}
                   >
+                    {/* Frente do card */}
                     <Card
                       className="h-full flex flex-col transition-all duration-200 group backface-hidden overflow-hidden"
                       style={{
@@ -476,28 +520,35 @@ const TaskApp: React.FC = () => {
                           0 1px 4px 0 rgba(0, 0, 0, 0.04),
                           inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
                         `,
+                        transform: 'rotateY(0deg)',
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow = `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                          0 0 0 1px rgba(255, 255, 255, 0.3),
-                          0 0 20px rgba(255, 255, 255, 0.15),
-                          0 8px 24px 0 rgba(0, 0, 0, 0.12),
-                          0 2px 8px 0 rgba(0, 0, 0, 0.06),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.06)
-                        `;
-                        e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                        if (!isFlipped) {
+                          e.currentTarget.style.boxShadow = `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                            0 0 0 1px rgba(255, 255, 255, 0.3),
+                            0 0 20px rgba(255, 255, 255, 0.15),
+                            0 8px 24px 0 rgba(0, 0, 0, 0.12),
+                            0 2px 8px 0 rgba(0, 0, 0, 0.06),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.06)
+                          `;
+                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow = `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 15px rgba(255, 255, 255, 0.1),
-                          0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                          0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                        `;
-                        e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                        if (!isFlipped) {
+                          e.currentTarget.style.boxShadow = `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                            0 0 0 1px rgba(255, 255, 255, 0.2),
+                            0 0 15px rgba(255, 255, 255, 0.1),
+                            0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                            0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                          `;
+                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                        }
                       }}
                     >
                       <CardHeader className="pb-3">
@@ -640,6 +691,99 @@ const TaskApp: React.FC = () => {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Verso do card - Formulário de motivo */}
+                    <Card
+                      className="h-full flex flex-col transition-all duration-200 group backface-hidden overflow-hidden absolute inset-0"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
+                        backdropFilter: 'blur(20px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 15px rgba(255, 255, 255, 0.1),
+                          0 4px 16px 0 rgba(0, 0, 0, 0.08),
+                          0 1px 4px 0 rgba(0, 0, 0, 0.04),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
+                        `,
+                        transform: 'rotateY(180deg)',
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden',
+                      }}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1">
+                            {task.name}
+                          </CardTitle>
+                          <Badge
+                            variant="outline"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              backdropFilter: 'blur(12px) saturate(180%)',
+                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              color: `rgba(${flippedCardStatus ? getStatusColorRGB(flippedCardStatus) : '148, 163, 184'}, 0.6)`,
+                              boxShadow: `
+                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                                inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                                inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                                0 0 8px 0 rgba(${flippedCardStatus ? getStatusColorRGB(flippedCardStatus) : '148, 163, 184'}, 0.15)
+                              `,
+                            }}
+                          >
+                            {flippedCardStatus ? statusConfig[flippedCardStatus]?.label : ''}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 flex flex-col space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            Informe o motivo {flippedCardStatus === 'not-executed' ? 'para não executar' : 'para aguardar ação'}:
+                          </label>
+                          <Input
+                            placeholder="Digite o motivo..."
+                            value={flippedCardReason}
+                            onChange={(e) => setFlippedCardReason(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && flippedCardReason.trim()) {
+                                handleConfirmReason(task.id);
+                              }
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="flex gap-2 mt-auto">
+                          <Button
+                            variant="outline"
+                            onClick={handleCancelReason}
+                            className="flex-1"
+                            disabled={savingReason}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={() => handleConfirmReason(task.id)}
+                            className="flex-1"
+                            disabled={savingReason || !flippedCardReason.trim()}
+                          >
+                            {savingReason ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Salvando...
+                              </>
+                            ) : (
+                              'Confirmar'
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               );
@@ -660,6 +804,9 @@ const TaskApp: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <p className="text-sm text-muted-foreground">

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { User } from '@/types/user';
 import { authApi } from '@/services/api';
@@ -190,6 +190,9 @@ const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ o
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Aprovar Usuário</DialogTitle>
+                          <DialogDescription>
+                            Selecione o papel do usuário e confirme a aprovação
+                          </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 pt-4">
                           <div>
@@ -257,6 +260,9 @@ const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ o
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Rejeitar Usuário</DialogTitle>
+                          <DialogDescription>
+                            Forneça um motivo para a rejeição (opcional)
+                          </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 pt-4">
                           <div>

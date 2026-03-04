@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Clock } from 'lucide-react';
@@ -96,6 +96,9 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Tarefa</DialogTitle>
+          <DialogDescription>
+            Atualize as informações da tarefa conforme necessário
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-4">
           {/* Nome */}

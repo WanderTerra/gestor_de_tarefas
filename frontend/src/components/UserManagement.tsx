@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2, AlertCircle, UserPlus } from 'lucide-react';
 import { User, getRoleLabel, isManagerRole } from '@/types/user';
@@ -168,6 +168,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Criar Novo Usuário</DialogTitle>
+                  <DialogDescription>
+                    Preencha os campos abaixo para criar um novo usuário
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <div className="space-y-2">
