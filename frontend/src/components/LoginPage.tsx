@@ -41,7 +41,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onRegister }) => {
         {/* Logo e título */}
         <div className="text-center mb-8">
           <img
-            src="/logosemfundo.png"
+            src="/logosemfundomenor.png"
             alt="Logo Gestor de Tarefas"
             className="mx-auto mb-4 h-16 w-auto object-contain"
           />

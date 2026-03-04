@@ -670,7 +670,7 @@ const TaskApp: React.FC = () => {
             >
               <div className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
                 <img
-                  src="/logosemfundo.png"
+                  src="/logosemfundomenor.png"
                   alt="Logo Gestor de Tarefas"
                   className="w-full h-full object-contain"
                 />
