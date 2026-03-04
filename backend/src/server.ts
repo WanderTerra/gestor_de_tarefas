@@ -33,8 +33,29 @@ app.use(cors(corsOptions));
 // Parse JSON
 app.use(express.json());
 
+// Middleware de log para debug (apenas em desenvolvimento)
+if (env.NODE_ENV === 'development') {
+  app.use((req, _res, next) => {
+    console.log(`📥 ${req.method} ${req.path} - Query:`, req.query, 'Body:', req.body);
+    next();
+  });
+}
+
 // Rotas da API
 app.use('/api', routes);
+
+// Log para debug em desenvolvimento
+if (env.NODE_ENV === 'development') {
+  console.log('✅ Rotas da API registradas em /api');
+  // Listar todas as rotas registradas
+  app._router?.stack?.forEach((middleware: any) => {
+    if (middleware.route) {
+      console.log(`  ${Object.keys(middleware.route.methods).join(',').toUpperCase()} ${middleware.route.path}`);
+    } else if (middleware.name === 'router') {
+      console.log(`  Router: ${middleware.regexp}`);
+    }
+  });
+}
 
 // Tratamento global de erros
 app.use(errorHandler);

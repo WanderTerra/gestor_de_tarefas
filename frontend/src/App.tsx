@@ -73,7 +73,7 @@ const TaskApp: React.FC = () => {
     clearError,
   } = useTasks();
 
-  const { checkOverdueTasks, checkOverdueAlerts } = useNotifications();
+  const { checkOverdueTasks, checkOverdueAlerts, checkPendingRequests } = useNotifications();
 
   const [page, setPage] = useState<Page>('tasks');
   const [newTaskName, setNewTaskName] = useState('');
@@ -193,6 +193,21 @@ const TaskApp: React.FC = () => {
       checkOverdueAlerts(overdueAlerts);
     }
   }, [overdueAlerts, loading, checkOverdueAlerts]);
+
+  // Monitorar novas solicitações de acesso (apenas para admins)
+  useEffect(() => {
+    if (!loading && isManager) {
+      // Verificar a cada 30 segundos
+      const interval = setInterval(() => {
+        checkPendingRequests();
+      }, 30000);
+      
+      // Verificar imediatamente
+      checkPendingRequests();
+      
+      return () => clearInterval(interval);
+    }
+  }, [loading, isManager, checkPendingRequests]);
 
   const resetDialog = () => {
     setNewTaskName('');

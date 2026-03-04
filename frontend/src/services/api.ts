@@ -13,21 +13,35 @@ function getApiUrl(): string {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Detecta se está sendo acessado por IP da rede
-  const hostname = window.location.hostname;
-  const isNetworkAccess = hostname !== 'localhost' && hostname !== '127.0.0.1';
-  
-  if (isNetworkAccess) {
-    // Se estiver sendo acessado pela rede, tenta usar o mesmo IP com porta do backend
+  // Verificar se window está disponível (não está em SSR)
+  if (typeof window === 'undefined') {
+    return '/api';
+  }
+
+  try {
+    // Detecta o hostname atual
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    
+    if (isLocalhost) {
+      // Quando acessa por localhost, usa URL completa para garantir que funcione
+      // mesmo se o proxy do Vite não estiver funcionando corretamente
+      const backendUrl = 'http://localhost:3001/api';
+      console.log('🏠 Acesso por localhost. Usando backend em:', backendUrl);
+      return backendUrl;
+    }
+    
+    // Se estiver sendo acessado pela rede (IP), usa o mesmo IP com porta do backend
     // O proxy do Vite pode não funcionar quando acessado por IP, então usa URL completa
     const backendUrl = `http://${hostname}:3001/api`;
     console.log('🌐 Acesso pela rede detectado. Usando backend em:', backendUrl);
     console.log('💡 Certifique-se de que o backend está acessível neste IP e porta 3001');
     return backendUrl;
+  } catch (error) {
+    console.error('❌ Erro ao determinar URL da API:', error);
+    // Fallback seguro
+    return '/api';
   }
-
-  // Caso padrão: usa /api (que será redirecionado pelo proxy do Vite para localhost:3001)
-  return '/api';
 }
 
 const API_URL = getApiUrl();
@@ -158,7 +172,17 @@ async function fetchWithErrorHandling<T>(
   options?: RequestInit
 ): Promise<T> {
   try {
+    // Log detalhado em desenvolvimento
+    if (import.meta.env.DEV) {
+      console.log('🌐 Fazendo requisição:', options?.method || 'GET', url);
+    }
     const response = await fetch(url, options);
+    
+    // Log da resposta em desenvolvimento
+    if (import.meta.env.DEV) {
+      console.log('📥 Resposta recebida:', response.status, response.statusText, 'de', url);
+    }
+    
     return handleResponse<T>(response);
   } catch (error) {
     // Se for erro de rede (não é ApiError), converter para ApiError

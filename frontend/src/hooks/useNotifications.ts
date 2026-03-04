@@ -13,14 +13,14 @@ export function useNotifications() {
   const previousAlertsRef = useRef<Set<number>>(new Set());
   
   // Usar estado para garantir que os valores sejam atualizados
-  const [isSupported] = useState(() => 'Notification' in window);
+  const [isSupported] = useState(() => typeof window !== 'undefined' && 'Notification' in window);
   const [permission, setPermission] = useState<NotificationPermission>(() => 
-    'Notification' in window ? Notification.permission : 'denied'
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied'
   );
 
   // Solicitar permissão de notificações
   const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (!('Notification' in window)) {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       console.warn('Notificações não são suportadas neste navegador');
       return false;
     }
@@ -46,7 +46,7 @@ export function useNotifications() {
 
   // Verificar permissão ao montar o componente
   useEffect(() => {
-    if ('Notification' in window) {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
       setPermission(Notification.permission);
       
       // Solicitar permissão automaticamente se ainda não foi solicitada
@@ -63,7 +63,7 @@ export function useNotifications() {
   // Enviar notificação
   const sendNotification = useCallback(
     (title: string, options: NotificationOptions) => {
-      if (!('Notification' in window)) {
+      if (typeof window === 'undefined' || !('Notification' in window)) {
         return;
       }
 
@@ -75,6 +75,8 @@ export function useNotifications() {
       try {
         const notification = new Notification(title, {
           ...options,
+          icon: '/favicon.ico', // Ícone da aplicação
+          badge: '/favicon.ico',
           requireInteraction: false, // Não requer interação para não ser intrusivo
           silent: false, // Tocar som
         });

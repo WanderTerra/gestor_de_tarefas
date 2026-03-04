@@ -10,6 +10,11 @@ const router = Router();
 // Rotas públicas e de autenticação
 router.use('/auth', authRoutes);
 
+// Log para debug em desenvolvimento
+if (process.env.NODE_ENV === 'development') {
+  console.log('✅ Rotas de autenticação registradas: /api/auth/login, /api/auth/register');
+}
+
 // Rotas protegidas
 router.use('/tasks', taskRoutes);
 router.use('/users', userRoutes);
