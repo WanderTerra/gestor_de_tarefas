@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { User, getRoleLabel, UserRole } from '@/types/user';
-import { userApi, ApiError } from '@/services/api';
+import { ApiError } from '@/services/api';
 
 interface EditUserDialogProps {
   user: User | null;
