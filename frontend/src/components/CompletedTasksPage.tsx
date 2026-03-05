@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat,
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, ChevronDown, Building2,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
@@ -114,6 +114,19 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [employees, setEmployees] = useState<User[]>([]);
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
+  const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
+
+  const toggleRoleCollapsed = useCallback((roleKey: string) => {
+    setCollapsedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(roleKey)) {
+        next.delete(roleKey);
+      } else {
+        next.add(roleKey);
+      }
+      return next;
+    });
+  }, []);
 
   // Filtro de datas — default: hoje (formato brasileiro)
   const [dateFrom, setDateFrom] = useState(() => todayBR());
@@ -540,24 +553,38 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                 </div>
               )}
 
-            {groupedData.map(({ roleLabel, role, users }) => (
-              <div key={role || 'no-role'} className="mb-10">
-                {/* Separador de role (apenas para gestores) */}
+            {groupedData.map(({ roleLabel, role, users }) => {
+              const roleKey = role || 'no-role';
+              const isRoleCollapsed = isManager && roleLabel && collapsedRoles.has(roleKey);
+              const taskCount = users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0);
+              
+              return (
+              <div key={roleKey} className="mb-10">
+                {/* Setor — clique para expandir/recolher (apenas gestores) */}
                 {isManager && roleLabel && (
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-200 text-base font-bold text-slate-800">
-                      <span className="text-lg">🏢</span>
-                      {roleLabel}
+                  <button
+                    type="button"
+                    onClick={() => toggleRoleCollapsed(roleKey)}
+                    className="w-full flex items-center gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1"
+                  >
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <Building2 className="h-5 w-5" />
+                      </div>
+                      <span className="font-bold text-slate-800">{roleLabel}</span>
                     </div>
-                    <div className="flex-1 h-px bg-slate-200" />
-                    <span className="text-sm text-slate-600 font-medium">
-                      {users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0)} tarefa{users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0) !== 1 ? 's' : ''}
+                    <div className="flex-1 h-px bg-slate-200 min-w-4" />
+                    <span className="text-sm font-medium text-slate-600 shrink-0">
+                      {taskCount} tarefa{taskCount !== 1 ? 's' : ''}
                     </span>
-                  </div>
+                    <ChevronDown
+                      className={`h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${isRoleCollapsed ? '' : 'rotate-180'}`}
+                    />
+                  </button>
                 )}
 
-                {/* Grupos por usuário */}
-                {users.map(({ userLabel, userId, dateGroups }) => (
+                {/* Grupos por usuário (oculto quando setor recolhido) */}
+                {!isRoleCollapsed && users.map(({ userLabel, userId, dateGroups }) => (
                   <div key={userId || 'no-user'} className={isManager ? "mb-8 ml-4" : "mb-8"}>
                     {/* Separador de usuário (apenas para gestores) */}
                     {isManager && userLabel && (
@@ -833,7 +860,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                   </div>
                 ))}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
