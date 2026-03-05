@@ -49,6 +49,7 @@ export const updateTaskSchema = z.object({
   isRecurring: z.boolean().optional(),
   recurringDays: z.array(DaysOfWeek).nullable().optional(),
   timeLimit: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM').nullable().optional(),
+  assignedToId: z.number().int().positive().nullable().optional(),
 }).refine(
   (data) => {
     // Se está mudando para status que requer motivo, reason deve ser fornecido

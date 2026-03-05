@@ -104,12 +104,14 @@ export const taskController = {
 
       const data = updateTaskSchema.parse(req.body);
 
-      // Se administrador está mudando atribuição
-      const assignedToId = (isManagerRole(user.role) && req.body.assignedToId !== undefined)
-        ? (req.body.assignedToId ? Number(req.body.assignedToId) : null)
+      // Se administrador está mudando atribuição, usar do data validado
+      const assignedToId = (isManagerRole(user.role) && data.assignedToId !== undefined)
+        ? data.assignedToId
         : undefined;
 
-      const task = await taskService.update(id, { ...data, assignedToId });
+      // Remover assignedToId do data antes de passar para o service (será passado separadamente)
+      const { assignedToId: _, ...taskData } = data;
+      const task = await taskService.update(id, { ...taskData, assignedToId });
 
       // Auditoria
       const action = data.status && Object.keys(data).length === 1 
