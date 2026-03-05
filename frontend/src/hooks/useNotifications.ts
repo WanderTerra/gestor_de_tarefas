@@ -13,67 +13,100 @@ export function useNotifications() {
   const previousAlertsRef = useRef<Set<number>>(new Set());
   
   // Usar estado para garantir que os valores sejam atualizados
-  const [isSupported] = useState(() => typeof window !== 'undefined' && 'Notification' in window);
-  const [permission, setPermission] = useState<NotificationPermission>(() => 
-    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied'
-  );
+  const [isSupported] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return 'Notification' in window && typeof window.Notification !== 'undefined';
+    } catch {
+      return false;
+    }
+  });
+  const [permission, setPermission] = useState<NotificationPermission>(() => {
+    if (typeof window === 'undefined') return 'denied';
+    try {
+      return 'Notification' in window && typeof window.Notification !== 'undefined' 
+        ? window.Notification.permission 
+        : 'denied';
+    } catch {
+      return 'denied';
+    }
+  });
 
   // Solicitar permissão de notificações
   const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-      console.warn('Notificações não são suportadas neste navegador');
+    if (typeof window === 'undefined') {
       return false;
     }
-
-    if (Notification.permission === 'granted') {
-      setPermission('granted');
-      return true;
-    }
-
-    if (Notification.permission === 'default') {
-      try {
-        const newPermission = await Notification.requestPermission();
-        setPermission(newPermission);
-        return newPermission === 'granted';
-      } catch (error) {
-        console.error('Erro ao solicitar permissão de notificações:', error);
+    
+    try {
+      if (!('Notification' in window) || typeof window.Notification === 'undefined') {
+        console.warn('Notificações não são suportadas neste navegador');
         return false;
       }
-    }
 
-    return false;
+      if (window.Notification.permission === 'granted') {
+        setPermission('granted');
+        return true;
+      }
+
+      if (window.Notification.permission === 'default') {
+        try {
+          const newPermission = await window.Notification.requestPermission();
+          setPermission(newPermission);
+          return newPermission === 'granted';
+        } catch (error) {
+          console.error('Erro ao solicitar permissão de notificações:', error);
+          return false;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao acessar API de Notificações:', error);
+      return false;
+    }
   }, []);
 
   // Verificar permissão ao montar o componente
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(Notification.permission);
-      
-      // Solicitar permissão automaticamente se ainda não foi solicitada
-      if (Notification.permission === 'default' && user) {
-        // Aguardar um pouco antes de solicitar para não ser intrusivo
-        const timer = setTimeout(() => {
-          requestPermission();
-        }, 2000);
-        return () => clearTimeout(timer);
+    if (typeof window === 'undefined') return;
+    
+    try {
+      if ('Notification' in window && typeof window.Notification !== 'undefined') {
+        setPermission(window.Notification.permission);
+        
+        // Solicitar permissão automaticamente se ainda não foi solicitada
+        if (window.Notification.permission === 'default' && user) {
+          // Aguardar um pouco antes de solicitar para não ser intrusivo
+          const timer = setTimeout(() => {
+            requestPermission();
+          }, 2000);
+          return () => clearTimeout(timer);
+        }
       }
+    } catch (error) {
+      console.error('Erro ao verificar permissão de notificações:', error);
     }
   }, [user, requestPermission]);
 
   // Enviar notificação
   const sendNotification = useCallback(
     (title: string, options: NotificationOptions) => {
-      if (typeof window === 'undefined' || !('Notification' in window)) {
-        return;
-      }
-
-      if (Notification.permission !== 'granted') {
-        console.log('Permissão de notificações não concedida');
+      if (typeof window === 'undefined') {
         return;
       }
 
       try {
-        const notification = new Notification(title, {
+        if (!('Notification' in window) || typeof window.Notification === 'undefined') {
+          return;
+        }
+
+        if (window.Notification.permission !== 'granted') {
+          console.log('Permissão de notificações não concedida');
+          return;
+        }
+
+        const notification = new window.Notification(title, {
           ...options,
           icon: '/favicon.ico', // Ícone da aplicação
           badge: '/favicon.ico',
@@ -101,7 +134,12 @@ export function useNotifications() {
   // Monitorar tarefas que ficaram atrasadas
   const checkOverdueTasks = useCallback(
     (tasks: Task[]) => {
-      if (!user || Notification.permission !== 'granted') {
+      if (typeof window === 'undefined') return;
+      try {
+        if (!user || !('Notification' in window) || typeof window.Notification === 'undefined' || window.Notification.permission !== 'granted') {
+          return;
+        }
+      } catch {
         return;
       }
 
@@ -165,7 +203,12 @@ export function useNotifications() {
   // Monitorar novos alertas de overdue
   const checkOverdueAlerts = useCallback(
     (alerts: OverdueAlert[]) => {
-      if (!user || Notification.permission !== 'granted') {
+      if (typeof window === 'undefined') return;
+      try {
+        if (!user || !('Notification' in window) || typeof window.Notification === 'undefined' || window.Notification.permission !== 'granted') {
+          return;
+        }
+      } catch {
         return;
       }
 
@@ -212,7 +255,12 @@ export function useNotifications() {
   // Monitorar novas solicitações de acesso (apenas para admins)
   const checkPendingRequests = useCallback(
     async () => {
-      if (!user || !isManager || Notification.permission !== 'granted') {
+      if (typeof window === 'undefined') return;
+      try {
+        if (!user || !isManager || !('Notification' in window) || typeof window.Notification === 'undefined' || window.Notification.permission !== 'granted') {
+          return;
+        }
+      } catch {
         return;
       }
 
