@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Loader2, AlertCircle,
-  CheckCircle2, Clock, Pencil, Trash2,
+  CheckCircle2, Clock, Pencil, Trash2, ArrowRight,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
 import { User, getRoleLabel } from '@/types/user';
@@ -23,6 +23,7 @@ import RejectedPage from '@/components/RejectedPage';
 import UserManagement from '@/components/UserManagement';
 import AuditLogView from '@/components/AuditLogView';
 import EditTaskDialog from '@/components/EditTaskDialog';
+import TransferTaskDialog from '@/components/TransferTaskDialog';
 import CompletedTasksPage from '@/components/CompletedTasksPage';
 import AuthorizationRequestsPage from '@/components/AuthorizationRequestsPage';
 import Header from '@/components/Header';
@@ -61,7 +62,7 @@ const App: React.FC = () => {
 };
 
 const TaskApp: React.FC = () => {
-  const { isManager } = useAuth();
+  const { isManager, user } = useAuth();
   const {
     tasks,
     loading,
@@ -91,6 +92,7 @@ const TaskApp: React.FC = () => {
   const [assignToId, setAssignToId] = useState<string>('');
   const [employees, setEmployees] = useState<User[]>([]);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [transferTask, setTransferTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
@@ -367,6 +369,19 @@ const TaskApp: React.FC = () => {
       setDeleting(false);
     }
   };
+
+  // Função para transferir tarefa (apenas para adm)
+  const handleTransfer = async (taskId: number, newUserId: number) => {
+    try {
+      await updateTask(taskId, { assignedToId: newUserId });
+    } catch (err) {
+      console.error('Erro ao transferir tarefa:', err);
+      throw err;
+    }
+  };
+
+  // Verificar se é administrador (role === 'adm')
+  const isAdmin = user?.role === 'adm';
 
   const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
     setPage(navPage);
@@ -810,6 +825,42 @@ const TaskApp: React.FC = () => {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
+                            {/* Botão de transferência (apenas para adm) */}
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-70 hover:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTransferTask(task);
+                                }}
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  backdropFilter: 'blur(8px)',
+                                  WebkitBackdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: 'rgba(59, 130, 246, 0.7)',
+                                  boxShadow: `
+                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                    0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                  `,
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
+                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                  e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
+                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                  e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                }}
+                                title="Transferir tarefa"
+                              >
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1076,6 +1127,17 @@ const TaskApp: React.FC = () => {
         onSave={updateTask}
         employees={employees}
       />
+
+      {/* Dialog de transferência de tarefa (apenas para adm) */}
+      {isAdmin && (
+        <TransferTaskDialog
+          task={transferTask}
+          open={!!transferTask}
+          onOpenChange={(open) => { if (!open) setTransferTask(null); }}
+          onTransfer={handleTransfer}
+          employees={employees}
+        />
+      )}
 
       <Dialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
         <DialogContent>

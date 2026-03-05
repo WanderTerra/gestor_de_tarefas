@@ -40,10 +40,54 @@ function formatDateTime(iso: string): string {
   return `${date} às ${time}`;
 }
 
-/** Retorna "YYYY-MM-DD" para hoje (formato ISO para input type="date") */
-function todayISO(): string {
+/** Retorna "dd/mm/aaaa" para hoje */
+function todayBR(): string {
   const d = new Date();
-  return d.toISOString().slice(0, 10);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/** Converte formato brasileiro (dd/mm/aaaa) para ISO (aaaa-mm-dd) */
+function brToISO(brDate: string): string {
+  const parts = brDate.split('/');
+  if (parts.length !== 3) return '';
+  const [day, month, year] = parts;
+  return `${year}-${month}-${day}`;
+}
+
+/** Aplica máscara de data brasileira (dd/mm/aaaa) */
+function applyDateMask(value: string): string {
+  // Remove tudo que não é número
+  const numbers = value.replace(/\D/g, '');
+  
+  // Aplica a máscara
+  if (numbers.length <= 2) {
+    return numbers;
+  } else if (numbers.length <= 4) {
+    return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
+  } else {
+    return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4, 8)}`;
+  }
+}
+
+/** Valida data brasileira (dd/mm/aaaa) */
+function isValidBRDate(brDate: string): boolean {
+  const parts = brDate.split('/');
+  if (parts.length !== 3) return false;
+  
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) return false;
+  
+  const date = new Date(year, month - 1, day);
+  return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
 }
 
 const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavigate }) => {
@@ -71,22 +115,26 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
 
-  // Filtro de datas — default: hoje (formato ISO para input type="date")
-  const [dateFrom, setDateFrom] = useState(() => todayISO());
-  const [dateTo, setDateTo] = useState(() => todayISO());
+  // Filtro de datas — default: hoje (formato brasileiro)
+  const [dateFrom, setDateFrom] = useState(() => todayBR());
+  const [dateTo, setDateTo] = useState(() => todayBR());
 
-  const fetchCompleted = useCallback(async (from: string, to: string) => {
+  const fetchCompleted = useCallback(async (fromBR: string, toBR: string) => {
     try {
       setLoading(true);
       setError(null);
       
-      if (!from || !to) {
-        setError('Por favor, selecione ambas as datas');
+      // Converte formato brasileiro para ISO antes de enviar à API
+      const fromISO = brToISO(fromBR);
+      const toISO = brToISO(toBR);
+      
+      if (!fromISO || !toISO || !isValidBRDate(fromBR) || !isValidBRDate(toBR)) {
+        setError('Por favor, insira datas válidas no formato dd/mm/aaaa');
         setLoading(false);
         return;
       }
       
-      const data = await taskApi.getCompleted({ from, to });
+      const data = await taskApi.getCompleted({ from: fromISO, to: toISO });
       setTasks(data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar tarefas concluídas';
@@ -96,10 +144,13 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     }
   }, []);
 
-  // Carregar na montagem inicial
+  // Carregar na montagem e quando filtro mudar
   useEffect(() => {
-    fetchCompleted(dateFrom, dateTo);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Só busca se ambas as datas são válidas
+    if (isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
+      fetchCompleted(dateFrom, dateTo);
+    }
+  }, [dateFrom, dateTo, fetchCompleted]);
 
   // Handler para buscar
   const handleSearch = () => {
@@ -112,10 +163,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
 
   // Handler para botão "Hoje"
   const handleToday = () => {
-    const today = todayISO();
+    const today = todayBR();
     setDateFrom(today);
     setDateTo(today);
-    fetchCompleted(today, today);
   };
 
   /** Converte string "seg,qua,sex" em labels legíveis */
@@ -339,9 +389,16 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                   <div className="relative flex-1">
                     <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                     <Input
-                      type="date"
+                      type="text"
                       value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
+                      onChange={(e) => {
+                        const masked = applyDateMask(e.target.value);
+                        if (masked.length <= 10) {
+                          setDateFrom(masked);
+                        }
+                      }}
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
                       className="pl-10"
                       style={{
                         background: 'rgba(255, 255, 255, 0.4)',
@@ -363,9 +420,16 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                   <div className="relative flex-1">
                     <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                     <Input
-                      type="date"
+                      type="text"
                       value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
+                      onChange={(e) => {
+                        const masked = applyDateMask(e.target.value);
+                        if (masked.length <= 10) {
+                          setDateTo(masked);
+                        }
+                      }}
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
                       className="pl-10"
                       style={{
                         background: 'rgba(255, 255, 255, 0.4)',

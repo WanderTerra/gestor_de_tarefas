@@ -112,16 +112,31 @@ export const taskController = {
       const task = await taskService.update(id, { ...data, assignedToId });
 
       // Auditoria
-      const action = data.status && Object.keys(data).length === 1 ? 'status_change' : 'update';
+      const action = data.status && Object.keys(data).length === 1 
+        ? 'status_change' 
+        : (data.assignedToId !== undefined && Object.keys(data).length === 1)
+        ? 'transfer'
+        : 'update';
+      
+      const auditDetails: any = {
+        changes: Object.keys(data),
+        ...(data.status && { newStatus: data.status, oldStatus: existingTask.status }),
+      };
+      
+      // Se foi transferência, adicionar detalhes específicos
+      if (data.assignedToId !== undefined) {
+        auditDetails.transfer = {
+          from: existingTask.assignedToId,
+          to: data.assignedToId,
+        };
+      }
+      
       await auditService.log({
         userId: user.id,
         action,
         entity: 'task',
         entityId: task.id,
-        details: JSON.stringify({
-          changes: Object.keys(data),
-          ...(data.status && { newStatus: data.status, oldStatus: existingTask.status }),
-        }),
+        details: JSON.stringify(auditDetails),
       });
 
       res.json(task);
