@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus, X } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, UserPlus, X, Pencil } from 'lucide-react';
 import { User, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
+import EditUserDialog from '@/components/EditUserDialog';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -32,6 +33,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Form state
@@ -89,6 +91,21 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
       setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao atualizar usuário');
+    }
+  };
+
+  const handleUpdateUser = async (id: number, data: { name?: string; password?: string; role?: string; active?: boolean }) => {
+    try {
+      setError(null);
+      const updated = await userApi.update(id, data);
+      setUsers(prev => prev.map(u => u.id === id ? updated : u));
+      setEditUser(null);
+    } catch (err) {
+      const message = err instanceof ApiError
+        ? err.details ? err.details.map(d => d.mensagem).join(', ') : err.message
+        : 'Erro ao atualizar usuário';
+      setError(message);
+      throw err; // Re-throw para o dialog tratar
     }
   };
 
@@ -334,30 +351,66 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                   <CardContent className="flex-1 flex flex-col space-y-3">
                     <p className="text-sm text-slate-600">@{user.username}</p>
                     <div className="flex-1" />
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
-                      <Badge 
-                        variant="outline"
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(12px)',
-                          WebkitBackdropFilter: 'blur(12px)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: user.active ? 'rgba(22, 101, 52, 0.6)' : 'rgba(71, 85, 105, 0.6)',
-                          boxShadow: `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                            0 0 8px 0 ${user.active 
-                              ? 'rgba(22, 101, 52, 0.15)' 
-                              : 'rgba(71, 85, 105, 0.15)'}
-                          `,
-                        }}
-                      >
-                        {user.active ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/50">
+                      <div className="flex items-center justify-between">
+                        <Badge 
+                          variant="outline"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: user.active ? 'rgba(22, 101, 52, 0.6)' : 'rgba(71, 85, 105, 0.6)',
+                            boxShadow: `
+                              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                              inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                              inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                              0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                              0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                              0 0 8px 0 ${user.active 
+                                ? 'rgba(22, 101, 52, 0.15)' 
+                                : 'rgba(71, 85, 105, 0.15)'}
+                            `,
+                          }}
+                        >
+                          {user.active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditUser(user)}
+                          className="gap-1.5"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(12px) saturate(180%)',
+                            WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'rgba(59, 130, 246, 0.7)',
+                            boxShadow: `
+                              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                              inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                              inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                              0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                              0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                            `,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                            e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                            e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          Editar
+                        </Button>
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"
@@ -404,6 +457,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
           )}
         </div>
       </div>
+
+      {/* Dialog de edição de usuário */}
+      <EditUserDialog
+        user={editUser}
+        open={!!editUser}
+        onOpenChange={(open) => { if (!open) setEditUser(null); }}
+        onSave={handleUpdateUser}
+      />
     </div>
   );
 };

@@ -99,6 +99,8 @@ async function start() {
             try {
               await overdueService.checkAndCreateAlerts();
               await overdueService.checkTimeLimitOverdue();
+              // Limpar flag isOverdue de tarefas com deadline no futuro (corrige marcações incorretas)
+              await overdueService.clearFutureDeadlineOverdue();
             } catch (err) {
               console.error('⚠️ Erro ao verificar tarefas atrasadas:', err);
             }
@@ -112,6 +114,8 @@ async function start() {
             setInterval(async () => {
               try {
                 await overdueService.checkTimeLimitOverdue();
+                // Limpar flag isOverdue de tarefas com deadline no futuro (corrige marcações incorretas)
+                await overdueService.clearFutureDeadlineOverdue();
               } catch (err) {
                 console.error('⚠️ Erro na verificação de horário limite:', err);
               }

@@ -101,11 +101,16 @@ export const overdueService = {
    * Verifica tarefas ativas com timeLimit (horário limite) que já foi
    * ultrapassado no dia de hoje e marca isOverdue = true.
    * Roda a cada minuto para capturar o atraso assim que ocorrer.
+   * 
+   * Para tarefas únicas (com deadline): só marca como atrasada se a data atual >= deadline
+   * Para tarefas recorrentes: marca se o horário atual >= timeLimit
    */
   async checkTimeLimitOverdue(): Promise<number> {
     try {
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
       // Buscar tarefas ativas que têm timeLimit definido,
       // cujo horário já foi ultrapassado e ainda não estão marcadas como atrasadas
@@ -115,12 +120,32 @@ export const overdueService = {
           timeLimit: { not: null },
           isOverdue: false,
         },
-        select: { id: true, timeLimit: true },
+        select: { id: true, timeLimit: true, deadline: true, isRecurring: true },
       });
 
-      const overdue = tasksWithTimeLimit.filter(
-        (t) => t.timeLimit && t.timeLimit <= currentTime
-      );
+      const overdue = tasksWithTimeLimit.filter((t) => {
+        if (!t.timeLimit) return false;
+        
+        // Para tarefas únicas (com deadline), verificar se a data atual >= deadline
+        if (!t.isRecurring && t.deadline) {
+          const deadlineDate = new Date(t.deadline);
+          deadlineDate.setHours(0, 0, 0, 0);
+          
+          // Se o deadline é no futuro, não está atrasada
+          if (deadlineDate > today) return false;
+          
+          // Se o deadline é hoje, verificar se o horário já passou
+          if (deadlineDate.getTime() === today.getTime()) {
+            return t.timeLimit <= currentTime;
+          }
+          
+          // Se o deadline já passou (dia anterior), está atrasada
+          return true;
+        }
+        
+        // Para tarefas recorrentes, verificar apenas o horário
+        return t.timeLimit <= currentTime;
+      });
 
       if (overdue.length === 0) return 0;
 
@@ -191,6 +216,62 @@ export const overdueService = {
       where: { id: taskId },
       data: { isOverdue: false },
     });
+  },
+
+  /**
+   * Limpa flag isOverdue de tarefas únicas que têm deadline no futuro
+   * (corrige tarefas que foram marcadas incorretamente)
+   * 
+   * IMPORTANTE: Compara apenas a DATA do deadline, ignorando a hora
+   */
+  async clearFutureDeadlineOverdue(): Promise<number> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Buscar tarefas únicas com deadline e isOverdue = true
+      const tasksToCheck = await prisma.task.findMany({
+        where: {
+          isRecurring: false,
+          deadline: { not: null },
+          isOverdue: true,
+          status: { in: ACTIVE_STATUSES },
+        },
+        select: { id: true, deadline: true },
+      });
+
+      // Filtrar apenas as que têm deadline no futuro (comparando apenas a data)
+      const tasksToClear = tasksToCheck.filter((task) => {
+        if (!task.deadline) return false;
+        const deadlineDate = new Date(task.deadline);
+        deadlineDate.setHours(0, 0, 0, 0);
+        return deadlineDate > today; // Deadline é no futuro
+      });
+
+      if (tasksToClear.length === 0) {
+        return 0;
+      }
+
+      const result = await prisma.task.updateMany({
+        where: {
+          id: { in: tasksToClear.map((t) => t.id) },
+        },
+        data: {
+          isOverdue: false,
+        },
+      });
+
+      if (result.count > 0) {
+        console.log(`✅ ${result.count} tarefa(s) com deadline futuro tiveram flag isOverdue limpa.`);
+      }
+
+      return result.count;
+    } catch (err: any) {
+      console.error('❌ Erro ao limpar flag isOverdue de tarefas com deadline futuro:', err);
+      return 0;
+    }
   },
 
   /**

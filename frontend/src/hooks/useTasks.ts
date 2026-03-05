@@ -6,6 +6,7 @@ export interface AddTaskOptions {
   description?: string;
   isRecurring?: boolean;
   recurringDays?: string[];
+  deadline?: string;
   timeLimit?: string;
   assignedToId?: number;
 }
@@ -61,6 +62,9 @@ export function useTasks(): UseTasksReturn {
       if (options?.isRecurring) {
         payload.isRecurring = true;
         payload.recurringDays = options.recurringDays;
+      }
+      if (options?.deadline) {
+        payload.deadline = options.deadline;
       }
       if (options?.timeLimit) {
         payload.timeLimit = options.timeLimit;

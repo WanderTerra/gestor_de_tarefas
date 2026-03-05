@@ -4,10 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Clock } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Task, TaskStatus, statusConfig } from '@/types/task';
 import { User } from '@/types/user';
 import { UpdateTaskPayload } from '@/services/api';
+import SimpleCalendar from './SimpleCalendar';
 
 interface EditTaskDialogProps {
   task: Task | null;
@@ -34,8 +35,8 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
   const [reason, setReason] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [hasTimeLimit, setHasTimeLimit] = useState(false);
   const [timeLimit, setTimeLimit] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
   const [assignedToId, setAssignedToId] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
@@ -47,9 +48,18 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
       setReason(task.reason || '');
       setIsRecurring(task.isRecurring);
       setSelectedDays(task.recurringDays ? task.recurringDays.split(',') : []);
-      setHasTimeLimit(!!task.timeLimit);
       setTimeLimit(task.timeLimit || '');
       setAssignedToId(task.assignedToId ? String(task.assignedToId) : '');
+      
+      // Converter deadline de string para Date se existir
+      if (task.deadline) {
+        const deadlineDate = new Date(task.deadline);
+        if (!isNaN(deadlineDate.getTime())) {
+          setDeadline(deadlineDate);
+        }
+      } else {
+        setDeadline(null);
+      }
     }
   }, [task]);
 
@@ -76,7 +86,8 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
         reason: requiresReason ? reason : null,
         isRecurring,
         recurringDays: isRecurring ? selectedDays : null,
-        timeLimit: hasTimeLimit ? timeLimit : null,
+        timeLimit: timeLimit || null,
+        deadline: !isRecurring && deadline ? deadline.toISOString() : null,
         assignedToId: assignedToId ? Number(assignedToId) : null,
       };
 
@@ -227,39 +238,111 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
             </div>
           )}
 
-          {/* Horário Limite */}
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Horário Limite</label>
-            <Switch checked={hasTimeLimit} onCheckedChange={setHasTimeLimit} />
-          </div>
-
-          {hasTimeLimit && (
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-              <Input
-                type="time"
-                value={timeLimit}
-                onChange={(e) => setTimeLimit(e.target.value)}
-                className="pl-10"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.4)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: `
-                    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                    0 0 0 1px rgba(255, 255, 255, 0.2),
-                    0 0 10px rgba(255, 255, 255, 0.08),
-                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                  `,
-                }}
+          {/* Deadline (apenas para tarefas únicas) */}
+          {!isRecurring && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Data da Tarefa</label>
+              <SimpleCalendar
+                selectedDate={deadline}
+                onDateSelect={setDeadline}
+                minDate={new Date()}
               />
             </div>
           )}
 
+          {/* Horário Limite (obrigatório) */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Horário Limite *</label>
+            <input
+              type="text"
+              value={timeLimit}
+              onChange={(e) => {
+                let value = e.target.value;
+                value = value.replace(/[^\d:]/g, '');
+                if (value.length > 5) {
+                  value = value.substring(0, 5);
+                }
+                if (value.length === 2 && !value.includes(':')) {
+                  value = value + ':';
+                }
+                const isValidFormat = 
+                  value === '' ||
+                  /^\d{1,2}$/.test(value) ||
+                  /^\d{1,2}:$/.test(value) ||
+                  /^\d{1,2}:\d{1,2}$/.test(value);
+                
+                if (isValidFormat) {
+                  const parts = value.split(':');
+                  if (parts.length === 1 && parts[0]) {
+                    const hours = parseInt(parts[0]);
+                    if (parts[0].length < 2 || hours <= 23) {
+                      setTimeLimit(value);
+                    }
+                  } else if (parts.length === 2) {
+                    const hours = parseInt(parts[0]) || 0;
+                    const minutesStr = parts[1] || '';
+                    const hoursValid = parts[0].length < 2 || hours <= 23;
+                    if (hoursValid) {
+                      if (minutesStr.length === 0) {
+                        setTimeLimit(value);
+                      } else if (minutesStr.length === 1) {
+                        const firstDigit = parseInt(minutesStr);
+                        if (firstDigit <= 5) {
+                          setTimeLimit(value);
+                        }
+                      } else if (minutesStr.length === 2) {
+                        const minutes = parseInt(minutesStr);
+                        if (minutes <= 59) {
+                          setTimeLimit(value);
+                        }
+                      }
+                    }
+                  } else {
+                    setTimeLimit(value);
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (timeLimit) {
+                  const parts = timeLimit.split(':');
+                  if (parts.length === 2) {
+                    let hours = parseInt(parts[0]) || 0;
+                    let minutes = parseInt(parts[1]) || 0;
+                    if (hours > 23) hours = 23;
+                    if (minutes > 59) minutes = 59;
+                    const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    setTimeLimit(formatted);
+                  } else if (parts.length === 1 && parts[0]) {
+                    let hours = parseInt(parts[0]) || 0;
+                    if (hours > 23) hours = 23;
+                    setTimeLimit(`${String(hours).padStart(2, '0')}:00`);
+                  }
+                }
+              }}
+              placeholder="16:00"
+              maxLength={5}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-lg"
+              style={{ 
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '0.05em',
+                fontFamily: 'monospace',
+                background: 'rgba(255, 255, 255, 0.4)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                  0 0 0 1px rgba(255, 255, 255, 0.2),
+                  0 0 10px rgba(255, 255, 255, 0.08),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                `,
+              }}
+            />
+          </div>
+
           {/* Botões */}
           <div className="flex gap-2 pt-2">
-            <Button onClick={handleSave} className="flex-1" disabled={saving || !name.trim()}>
+            <Button onClick={handleSave} className="flex-1" disabled={saving || !name.trim() || !timeLimit.trim()}>
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -3,9 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import {
   Plus, Loader2, AlertCircle,
   CheckCircle2, Clock, Pencil, Trash2, ArrowRight,
@@ -28,6 +27,7 @@ import TransferTaskDialog from '@/components/TransferTaskDialog';
 import CompletedTasksPage from '@/components/CompletedTasksPage';
 import AuthorizationRequestsPage from '@/components/AuthorizationRequestsPage';
 import Header from '@/components/Header';
+import CreateTaskWizard from '@/components/CreateTaskWizard';
 import type { Task } from '@/types/task';
 
 type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'register' | 'pending-approval' | 'authorization-requests';
@@ -78,19 +78,12 @@ const TaskApp: React.FC = () => {
   const { checkOverdueTasks, checkOverdueAlerts, checkPendingRequests } = useNotifications();
 
   const [page, setPage] = useState<Page>('tasks');
-  const [newTaskName, setNewTaskName] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [flippedCard, setFlippedCard] = useState<number | null>(null);
   const [flippedCardReason, setFlippedCardReason] = useState<string>('');
   const [flippedCardStatus, setFlippedCardStatus] = useState<TaskStatus | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingReason, setSavingReason] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [hasTimeLimit, setHasTimeLimit] = useState(false);
-  const [timeLimit, setTimeLimit] = useState('');
-  const [assignToId, setAssignToId] = useState<string>('');
   const [employees, setEmployees] = useState<User[]>([]);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [transferTask, setTransferTask] = useState<Task | null>(null);
@@ -136,16 +129,6 @@ const TaskApp: React.FC = () => {
     return () => clearTimeout(t);
   }, [selectedUserId, page]);
 
-  const daysOfWeek = [
-    { id: 'dom', label: 'Dom' },
-    { id: 'seg', label: 'Seg' },
-    { id: 'ter', label: 'Ter' },
-    { id: 'qua', label: 'Qua' },
-    { id: 'qui', label: 'Qui' },
-    { id: 'sex', label: 'Sex' },
-    { id: 'sab', label: 'Sáb' },
-  ];
-
   const isTerminalStatus = useCallback(
     (status: TaskStatus) => status === 'completed' || status === 'not-executed',
     [],
@@ -177,12 +160,52 @@ const TaskApp: React.FC = () => {
     (task: Task): boolean => {
       // Tarefa concluída nunca mostra atrasada
       if (task.status === 'completed') return false;
+      
       // Se o backend já marcou como atrasada (dia anterior), respeitar
       if (task.isOverdue) return true;
-      // Verificar horário limite do dia atual
-      if (task.timeLimit) {
+      
+      // PRIORIDADE: Se tem deadline, tratar como tarefa única (mesmo que isRecurring esteja true)
+      // Isso corrige casos onde a tarefa foi criada como única mas isRecurring está incorreto
+      if (task.deadline) {
+        try {
+          const deadlineDate = new Date(task.deadline);
+          // Normalizar para meia-noite (local) para comparação de data apenas
+          deadlineDate.setHours(0, 0, 0, 0);
+          
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Se o deadline é no futuro, não está atrasada
+          if (deadlineDate > today) {
+            return false;
+          }
+          
+          // Se o deadline é hoje, verificar se o horário já passou
+          if (deadlineDate.getTime() === today.getTime()) {
+            if (task.timeLimit) {
+              return currentTime >= task.timeLimit;
+            }
+            // Se não tem timeLimit mas deadline é hoje, não está atrasada ainda
+            return false;
+          }
+          
+          // Se o deadline já passou (dia anterior), está atrasada
+          if (deadlineDate < today) {
+            return true;
+          }
+        } catch (err) {
+          console.error('Erro ao processar deadline da tarefa:', task.id, err);
+          return false;
+        }
+        
+        return false;
+      }
+      
+      // Para tarefas recorrentes (sem deadline), verificar apenas o horário limite do dia atual
+      if (task.isRecurring && task.timeLimit) {
         return currentTime >= task.timeLimit;
       }
+      
       return false;
     },
     [currentTime],
@@ -293,40 +316,32 @@ const TaskApp: React.FC = () => {
     }
   }, [loading, isManager, checkPendingRequests]);
 
-  const resetDialog = () => {
-    setNewTaskName('');
-    setNewTaskDescription('');
-    setIsRecurring(false);
-    setSelectedDays([]);
-    setHasTimeLimit(false);
-    setTimeLimit('');
-    setAssignToId('');
-    setIsDialogOpen(false);
-  };
-
-  const handleAddTask = async () => {
-    if (!newTaskName.trim()) return;
+  const handleSaveTask = async (taskData: {
+    name: string;
+    description: string;
+    isRecurring: boolean;
+    recurringDays?: string[];
+    recurringDayOfMonth?: number;
+    deadline?: string;
+    timeLimit?: string;
+    assignedToId?: number;
+  }) => {
     setSaving(true);
     try {
-      await addTask(newTaskName, 'pending', {
-        description: newTaskDescription,
-        isRecurring,
-        recurringDays: isRecurring ? selectedDays : undefined,
-        timeLimit: hasTimeLimit ? timeLimit : undefined,
-        assignedToId: assignToId ? Number(assignToId) : undefined,
+      await addTask(taskData.name, 'pending', {
+        description: taskData.description,
+        isRecurring: taskData.isRecurring,
+        recurringDays: taskData.recurringDays,
+        deadline: taskData.deadline,
+        timeLimit: taskData.timeLimit,
+        assignedToId: taskData.assignedToId,
       });
-      resetDialog();
     } catch (err) {
       console.error('Erro ao adicionar tarefa:', err);
+      throw err;
     } finally {
       setSaving(false);
     }
-  };
-
-  const toggleDay = (day: string) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    );
   };
 
   const handleStatusChange = useCallback(async (taskId: number, newStatus: TaskStatus) => {
@@ -472,134 +487,49 @@ const TaskApp: React.FC = () => {
       {!loading && page === 'tasks' && (
         <div className="container mx-auto px-4 pt-6 pb-4">
           <div className="flex items-center justify-end">
-            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetDialog(); }}>
-              <DialogTrigger asChild>
-                <Button
-                  size="default"
-                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
-                    backdropFilter: 'blur(12px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    color: 'rgba(15, 23, 42, 0.9)',
-                    boxShadow: `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                      inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                      inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                      0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                    `,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                  }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Nova Tarefa
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criar Nova Tarefa</DialogTitle>
-                  <DialogDescription>
-                    Preencha os campos abaixo para criar uma nova tarefa
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Nome da Tarefa</label>
-                    <Input
-                      placeholder="Digite o nome da tarefa"
-                      value={newTaskName}
-                      onChange={(e) => setNewTaskName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Descrição (opcional)</label>
-                    <Input
-                      placeholder="Breve descrição da tarefa"
-                      value={newTaskDescription}
-                      onChange={(e) => setNewTaskDescription(e.target.value)}
-                    />
-                  </div>
-                  {isManager && employees.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Atribuir a</label>
-                      <Select value={assignToId} onValueChange={setAssignToId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um funcionário" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {employees.map((emp) => (
-                            <SelectItem key={emp.id} value={String(emp.id)}>{emp.name} ({getRoleLabel(emp.role)})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Tarefa Recorrente</label>
-                    <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
-                  </div>
-                  {isRecurring && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Dias da Semana</label>
-                      <div className="grid grid-cols-7 gap-2">
-                        {daysOfWeek.map((day) => (
-                          <button
-                            key={day.id}
-                            type="button"
-                            onClick={() => toggleDay(day.id)}
-                            className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                              selectedDays.includes(day.id)
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            {day.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Definir Horário Limite</label>
-                    <Switch checked={hasTimeLimit} onCheckedChange={setHasTimeLimit} />
-                  </div>
-                  {hasTimeLimit && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Horário Limite</label>
-                      <Input
-                        type="time"
-                        value={timeLimit}
-                        onChange={(e) => setTimeLimit(e.target.value)}
-                      />
-                    </div>
-                  )}
-                  <Button onClick={handleAddTask} className="w-full" disabled={saving || !newTaskName.trim()}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      'Adicionar Tarefa'
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button
+              size="default"
+              className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+              onClick={() => setIsDialogOpen(true)}
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
+                backdropFilter: 'blur(12px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: 'rgba(15, 23, 42, 0.9)',
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                  inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                  inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                  0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                  0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                `,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
+                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
+                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Nova Tarefa
+            </Button>
           </div>
         </div>
       )}
+
+      <CreateTaskWizard
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSave={handleSaveTask}
+        employees={employees}
+        isManager={isManager}
+        saving={saving}
+      />
 
       {loading && page === 'tasks' && (
         <div className="container mx-auto px-4 py-16">
