@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, UserPlus, X } from 'lucide-react';
 import { User, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
@@ -245,7 +245,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
             <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span className="text-sm flex-1">{error}</span>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)} className="text-red-700">✕</Button>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)} className="text-red-700"><X className="w-4 h-4" /></Button>
             </div>
           )}
 

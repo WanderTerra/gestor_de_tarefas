@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Plus, Loader2, AlertCircle,
   CheckCircle2, Clock, Pencil, Trash2, ArrowRight,
+  X, User as UserIcon, Repeat, Filter, Building2, ChevronDown,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
 import { User, getRoleLabel } from '@/types/user';
@@ -99,6 +100,17 @@ const TaskApp: React.FC = () => {
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [fadingCards, setFadingCards] = useState<Set<number>>(new Set());
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
+  const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
+  const filterSectionRef = useRef<HTMLDivElement>(null);
+
+  const toggleRoleCollapsed = useCallback((roleKey: string) => {
+    setCollapsedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(roleKey)) next.delete(roleKey);
+      else next.add(roleKey);
+      return next;
+    });
+  }, []);
 
   // Relógio que atualiza a cada minuto para verificar horários limite
   const [currentTime, setCurrentTime] = useState(() => {
@@ -113,6 +125,16 @@ const TaskApp: React.FC = () => {
     }, 30_000); // Atualiza a cada 30s
     return () => clearInterval(interval);
   }, []);
+
+  // Ao mudar o filtro de usuário, rolar para o topo (filtro) após o re-render
+  useEffect(() => {
+    if (page !== 'tasks') return;
+    const t = setTimeout(() => {
+      filterSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [selectedUserId, page]);
 
   const daysOfWeek = [
     { id: 'dom', label: 'Dom' },
@@ -441,7 +463,7 @@ const TaskApp: React.FC = () => {
                 color: 'rgba(239, 68, 68, 0.7)',
               }}
             >
-              ✕
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -588,34 +610,26 @@ const TaskApp: React.FC = () => {
         </div>
       )}
 
-      {!loading && filteredActiveTasks.length === 0 && page === 'tasks' && (
-        <div className="container mx-auto px-4 py-16">
-          <div className="flex flex-col items-center justify-center gap-4 text-center">
-            <CheckCircle2 className="w-12 h-12 text-green-500/60" />
-            <h3 className="text-xl font-bold text-foreground">
-              Nenhuma tarefa ativa encontrada
-            </h3>
-            <p className="text-muted-foreground max-w-md">
-              Parece que você não tem tarefas ativas no momento. Que tal criar uma nova?
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!loading && filteredActiveTasks.length > 0 && page === 'tasks' && (
-        <div className="container mx-auto px-4 pt-6 pb-2">
-          {/* Filtro por usuário (apenas para gestores) */}
+      {!loading && page === 'tasks' && (
+        <div ref={filterSectionRef} className="container mx-auto px-4 pt-6 pb-2">
+          {/* Filtro por usuário — sempre visível para gestores */}
           {isManager && (
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">Filtrar por usuário:</span>
+            <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Filter className="w-5 h-5 text-slate-500" />
+                  <span className="text-sm font-semibold">Filtrar por usuário</span>
+                </div>
                 <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                  <SelectTrigger className="w-[250px]" style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                  }}>
+                  <SelectTrigger
+                    className="w-full min-w-[220px] max-w-[280px]"
+                    style={{
+                      background: '#fff',
+                      border: '1px solid rgb(203, 213, 225)',
+                      color: '#1e293b',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    }}
+                  >
                     <SelectValue placeholder="Todos os usuários" />
                   </SelectTrigger>
                   <SelectContent>
@@ -627,46 +641,101 @@ const TaskApp: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedUserId !== 'all' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-600 hover:text-slate-800"
+                    onClick={() => setSelectedUserId('all')}
+                  >
+                    Limpar filtro
+                  </Button>
+                )}
               </div>
             </div>
           )}
 
+          {/* Estado vazio: sem tarefas ativas (nem com filtro) */}
+          {activeTasks.length === 0 && (
+            <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
+              <CheckCircle2 className="w-12 h-12 text-green-500/60" />
+              <h3 className="text-xl font-bold text-foreground">
+                Nenhuma tarefa ativa encontrada
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                Parece que você não tem tarefas ativas no momento. Que tal criar uma nova?
+              </p>
+            </div>
+          )}
+
+          {/* Estado: filtro aplicado mas nenhum resultado */}
+          {activeTasks.length > 0 && filteredActiveTasks.length === 0 && (
+            <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
+              <UserIcon className="w-12 h-12 text-slate-300" />
+              <h3 className="text-xl font-bold text-foreground">
+                Nenhuma tarefa para o usuário selecionado
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                Escolha &quot;Todos os usuários&quot; no filtro acima ou outro usuário para ver as tarefas.
+              </p>
+            </div>
+          )}
+
+          {/* Lista de tarefas (quando há resultado do filtro) */}
+          {filteredActiveTasks.length > 0 && (
+          <>
           {/* Grupos por role e usuário */}
-          {groupedTasks.map(({ roleLabel, role, users }) => (
-            <div key={role || 'no-role'} className={isManager ? "mb-10" : ""}>
-              {/* Separador de role (apenas para gestores) */}
+          {groupedTasks.map(({ roleLabel, role, users }) => {
+            const roleKey = role || 'no-role';
+            const isRoleCollapsed = isManager && roleLabel && collapsedRoles.has(roleKey);
+            const taskCount = users.reduce((sum, u) => sum + u.tasks.length, 0);
+            return (
+            <div key={roleKey} className={isManager ? "mb-10" : ""}>
+              {/* Setor — clique para expandir/recolher (apenas gestores) */}
               {isManager && roleLabel && (
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-200 text-base font-bold text-slate-800">
-                    <span className="text-lg">🏢</span>
-                    {roleLabel}
+                <button
+                  type="button"
+                  onClick={() => toggleRoleCollapsed(roleKey)}
+                  className="w-full flex items-center gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1"
+                >
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <span className="font-bold text-slate-800">{roleLabel}</span>
                   </div>
-                  <div className="flex-1 h-px bg-slate-200" />
-                  <span className="text-sm text-slate-600 font-medium">
-                    {users.reduce((sum, u) => sum + u.tasks.length, 0)} tarefa{users.reduce((sum, u) => sum + u.tasks.length, 0) !== 1 ? 's' : ''}
+                  <div className="flex-1 h-px bg-slate-200 min-w-4" />
+                  <span className="text-sm font-medium text-slate-600 shrink-0">
+                    {taskCount} tarefa{taskCount !== 1 ? 's' : ''}
                   </span>
-                </div>
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${isRoleCollapsed ? '' : 'rotate-180'}`}
+                  />
+                </button>
               )}
 
-              {/* Grupos por usuário */}
-              {users.map(({ userLabel, userId, tasks: userTasks }) => (
+              {/* Grupos por usuário (oculto quando setor recolhido) */}
+              {!isRoleCollapsed && users.map(({ userLabel, userId, tasks: userTasks }) => (
                 <div key={userId || 'no-user'} className={isManager ? "mb-8 ml-4" : ""}>
                   {/* Separador de usuário (apenas para gestores) */}
                   {isManager && userLabel && (
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
-                        <span className="text-lg">👤</span>
-                        {userLabel}
+                    <div className="flex items-center w-full gap-3 mb-6">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
+                        <UserIcon className="h-4 w-4 text-slate-500" />
                       </div>
-                      <div className="flex-1 h-px bg-slate-200" />
-                      <span className="text-sm text-slate-600 font-medium">
+                      <div className="flex-1 min-w-0 h-px bg-slate-200" />
+                      <span className="px-4 py-1.5 shrink-0 text-base font-bold text-black bg-slate-100/80 rounded-md border border-slate-200/80">
+                        {userLabel}
+                      </span>
+                      <div className="flex-1 min-w-0 h-px bg-slate-200" />
+                      <span className="shrink-0 text-sm text-slate-600">
                         {userTasks.length} tarefa{userTasks.length !== 1 ? 's' : ''}
                       </span>
                     </div>
                   )}
 
                   {/* Grid de cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-fr items-stretch">
                     {userTasks.map((task) => {
                   const config = statusConfig[task.status as TaskStatus];
                   const isFlipped = flippedCard === task.id;
@@ -675,11 +744,11 @@ const TaskApp: React.FC = () => {
                   return (
                     <div
                       key={task.id}
-                      className={`relative h-full ${isFading ? 'fade-out-pulse' : ''}`}
+                      className={`relative h-full min-h-0 flex ${isFading ? 'fade-out-pulse' : ''}`}
                       style={{ perspective: '1000px' }}
                     >
                   <div
-                    className="relative w-full h-full"
+                    className="relative w-full h-full min-h-0 flex flex-col"
                     style={{
                       transformStyle: 'preserve-3d',
                       transition: 'transform 0.6s ease-in-out',
@@ -688,20 +757,19 @@ const TaskApp: React.FC = () => {
                   >
                     {/* Frente do card */}
                     <Card
-                      className="h-full flex flex-col transition-all duration-200 group backface-hidden overflow-hidden"
+                      className="h-full min-h-0 flex flex-col transition-all duration-200 group backface-hidden overflow-hidden"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
-                        backdropFilter: 'blur(20px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 15px rgba(255, 255, 255, 0.1),
-                          0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                          0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                        `,
+                        ...(isTaskOverdue(task)
+                          ? {
+                              background: '#fff',
+                              border: '1px solid rgba(0, 0, 0, 0.08)',
+                              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)',
+                            }
+                          : {
+                              background: '#fff',
+                              border: '1px solid rgba(0, 0, 0, 0.08)',
+                              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+                            }),
                         transform: 'rotateY(0deg)',
                         backfaceVisibility: 'hidden',
                         WebkitBackfaceVisibility: 'hidden',
@@ -709,132 +777,96 @@ const TaskApp: React.FC = () => {
                       onMouseEnter={(e) => {
                         if (!isFlipped) {
                           setHoveredCardId(task.id);
-                          e.currentTarget.style.boxShadow = `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                            0 0 0 1px rgba(255, 255, 255, 0.3),
-                            0 0 20px rgba(255, 255, 255, 0.15),
-                            0 8px 24px 0 rgba(0, 0, 0, 0.12),
-                            0 2px 8px 0 rgba(0, 0, 0, 0.06),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.06)
-                          `;
-                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                          if (isTaskOverdue(task)) {
+                            e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)';
+                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                          } else {
+                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
+                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                          }
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!isFlipped) {
                           setHoveredCardId(null);
-                          e.currentTarget.style.boxShadow = `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                            0 0 0 1px rgba(255, 255, 255, 0.2),
-                            0 0 15px rgba(255, 255, 255, 0.1),
-                            0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                            0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                          `;
-                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                          if (isTaskOverdue(task)) {
+                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)';
+                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                          } else {
+                            e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.08)';
+                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                          }
                         }
                       }}
                     >
-                      {/* Tarja Diagonal - Atrasado (isOverdue do backend OU horário limite ultrapassado) */}
-                      {isTaskOverdue(task) && (
-                        <div className="absolute top-0 left-0 pointer-events-none z-10" style={{ width: '150px', height: '150px', overflow: 'hidden' }}>
-                          <div 
-                            className="absolute text-white text-[10px] py-1 tracking-wide leading-none" 
-                            style={{ 
-                              top: '26px', 
-                              left: '-56px', 
-                              width: '180px', 
-                              transform: 'rotate(-45deg)', 
-                              textAlign: 'center',
-                              fontWeight: 800,
-                              fontFamily: 'system-ui, -apple-system, sans-serif',
-                              background: 'linear-gradient(135deg, rgba(248, 113, 113, 0.95) 0%, rgba(239, 68, 68, 0.95) 100%)',
-                              backdropFilter: 'blur(10px)',
-                              WebkitBackdropFilter: 'blur(10px)',
-                              border: '1px solid rgba(255, 255, 255, 0.3)',
-                              boxShadow: `
-                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.15),
-                                inset 1px 0 0 0 rgba(255, 255, 255, 0.3),
-                                inset -1px 0 0 0 rgba(0, 0, 0, 0.12),
-                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                              `,
+                      {/* Faixa ATRASADO só quando atrasado; sem tarja o card não tem “testona” */}
+                      <div className="relative w-full flex-shrink-0 h-8">
+                        {isTaskOverdue(task) && (
+                          <div
+                            className="absolute inset-0 w-full flex items-center justify-center text-white font-bold tracking-wider text-xs pointer-events-none"
+                            style={{
+                              background: '#FF2C2C',
+                              borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                              letterSpacing: '0.15em',
                             }}
                           >
                             ATRASADO
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
-                      <CardHeader className="pb-3 relative pt-8">
-                        {/* Badge no canto superior esquerdo */}
-                        <div className="absolute top-0 left-6 z-10">
+                      <CardHeader className="pb-2 pt-3 space-y-2">
+                        {/* Linha 1: Badge de status + botões (evita tag em cima do título) */}
+                        <div className="flex items-center justify-between gap-2 min-h-[1.75rem]">
                           <Badge
                             variant="outline"
+                            className="text-sm shrink-0 font-bold"
                             style={{
-                              background: 'rgba(255, 255, 255, 0.1)',
-                              backdropFilter: 'blur(12px) saturate(180%)',
-                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
-                              color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
-                              boxShadow: `
-                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                0 0 8px 0 rgba(${getStatusColorRGB(task.status)}, 0.15)
-                              `,
+                              background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`,
+                              border: `2px solid rgb(${getStatusColorRGB(task.status)})`,
+                              color: `rgb(${getStatusColorRGB(task.status)})`,
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
                             }}
                           >
                             {config.label}
                           </Badge>
-                        </div>
-
-                        {/* Botões no canto superior direito */}
-                        {isManager && hoveredCardId === task.id && (
-                          <div className="absolute top-0 right-0 flex gap-1 z-10 transition-opacity duration-200">
+                          {isManager && hoveredCardId === task.id && (
+                          <div className="flex gap-1 transition-opacity duration-200">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 opacity-70 hover:opacity-100"
+                              className="h-6 w-6 opacity-70 hover:opacity-100"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditTask(task);
                               }}
                               style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                backdropFilter: 'blur(8px)',
-                                WebkitBackdropFilter: 'blur(8px)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                boxShadow: `
-                                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                  0 2px 4px 0 rgba(0, 0, 0, 0.1)
-                                `,
+                                background: '#fff',
+                                border: '1px solid rgba(0, 0, 0, 0.1)',
+                                color: '#374151',
+                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                e.currentTarget.style.background = '#f3f4f6';
+                                e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.15)';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.background = '#fff';
+                                e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
                               }}
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-3 w-3" />
                             </Button>
                             {/* Botão de transferência (apenas para adm) */}
                             {isAdmin && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 opacity-70 hover:opacity-100"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTransferTask(task);
-                                }}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-70 hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTransferTask(task);
+                              }}
                                 style={{
                                   background: 'rgba(255, 255, 255, 0.1)',
                                   backdropFilter: 'blur(8px)',
@@ -858,54 +890,48 @@ const TaskApp: React.FC = () => {
                                 }}
                                 title="Transferir tarefa"
                               >
-                                <ArrowRight className="h-3.5 w-3.5" />
+                                <ArrowRight className="h-3 w-3" />
                               </Button>
                             )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 opacity-70 hover:opacity-100"
+                              className="h-6 w-6 opacity-70 hover:opacity-100"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setDeleteConfirm(task);
                               }}
                               style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                backdropFilter: 'blur(8px)',
-                                WebkitBackdropFilter: 'blur(8px)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                color: 'rgba(239, 68, 68, 0.7)',
-                                boxShadow: `
-                                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                  0 2px 4px 0 rgba(0, 0, 0, 0.1)
-                                `,
+                                background: '#fff',
+                                border: '1px solid rgba(0, 0, 0, 0.1)',
+                                color: '#dc2626',
+                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.color = 'rgba(239, 68, 68, 0.9)';
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                e.currentTarget.style.background = '#fef2f2';
+                                e.currentTarget.style.border = '1px solid rgba(220, 38, 38, 0.3)';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'rgba(239, 68, 68, 0.7)';
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.background = '#fff';
+                                e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
                               }}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
-                        )}
+                          )}
+                        </div>
 
-                        {/* Título do card */}
+                        {/* Título do card — linha 2, nunca sob a tag */}
                         <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh]">
+                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 leading-snug">
                             {task.name}
                           </CardTitle>
                         </div>
                       </CardHeader>
-                      <CardContent className="flex-1 flex flex-col space-y-3">
+                      <CardContent className="flex-1 min-h-0 flex flex-col space-y-2">
                         {task.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
+                          <p className="text-sm text-muted-foreground line-clamp-2 leading-snug">
                             {task.description}
                           </p>
                         )}
@@ -914,77 +940,49 @@ const TaskApp: React.FC = () => {
                         {task.assignedTo && isManager && (
                           <Badge
                             variant="secondary"
-                            className="text-xs"
+                            className="text-sm"
                             style={{
-                              background: 'rgba(255, 255, 255, 0.1)',
-                              backdropFilter: 'blur(12px) saturate(180%)',
-                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
-                              color: 'rgba(71, 85, 105, 0.6)',
-                              boxShadow: `
-                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                0 0 8px 0 rgba(71, 85, 105, 0.15)
-                              `,
+                              background: '#fff',
+                              border: '1px solid rgba(0, 0, 0, 0.1)',
+                              color: '#000',
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                             }}
                           >
-                            👤 {task.assignedTo.name}
+                            <UserIcon className="w-3.5 h-3.5 shrink-0 inline mr-1 align-middle" />
+                            {task.assignedTo.name}
                           </Badge>
                         )}
 
                         {/* Info de recorrência e horário limite */}
                         {(task.isRecurring || task.timeLimit) && (
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1">
                             {task.isRecurring && task.recurringDays && (
                               <Badge
                                 variant="secondary"
-                                className="text-xs gap-1"
+                                className="text-sm gap-1"
                                 style={{
-                                  background: 'rgba(255, 255, 255, 0.1)',
-                                  backdropFilter: 'blur(12px) saturate(180%)',
-                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                                  color: 'rgba(109, 40, 217, 0.6)',
-                                  boxShadow: `
-                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                    0 0 8px 0 rgba(109, 40, 217, 0.15)
-                                  `,
+                                  background: '#fff',
+                                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                                  color: '#000',
+                                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                 }}
                               >
-                                🔁 {formatRecurringDays(task.recurringDays)}
+                                <Repeat className="w-3.5 h-3.5 shrink-0 inline mr-1 align-middle" />
+                                {formatRecurringDays(task.recurringDays)}
                               </Badge>
                             )}
                             {task.timeLimit && (
                               <Badge
                                 variant="secondary"
-                                className="text-xs gap-1"
+                                className="text-sm gap-1"
                                 style={{
-                                  background: 'rgba(255, 255, 255, 0.1)',
-                                  backdropFilter: 'blur(12px) saturate(180%)',
-                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                                  color: 'rgba(37, 99, 235, 0.6)',
-                                  boxShadow: `
-                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                    0 0 8px 0 rgba(37, 99, 235, 0.15)
-                                  `,
+                                  background: '#fff',
+                                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                                  color: '#000',
+                                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                 }}
                               >
-                                <Clock className="w-3 h-3" />
+                                <Clock className="w-3.5 h-3.5" />
                                 {task.timeLimit}
                               </Badge>
                             )}
@@ -992,15 +990,23 @@ const TaskApp: React.FC = () => {
                         )}
 
                         {/* Espaçador flexível */}
-                        <div className="flex-1" />
+                        <div className="flex-1 min-h-2" />
 
-                        <div className="mt-4">
+                        <div className="mt-2">
                           {!isTerminalStatus(task.status) && (
                             <Select
                               value={task.status}
                               onValueChange={(value) => handleStatusChange(task.id, value as TaskStatus)}
                             >
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger
+                                className="w-full"
+                                style={{
+                                  background: '#fff',
+                                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                                  color: '#000',
+                                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                }}
+                              >
                                 <SelectValue placeholder="Alterar status" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1020,54 +1026,35 @@ const TaskApp: React.FC = () => {
                     <Card
                       className="h-full flex flex-col transition-all duration-200 group backface-hidden overflow-hidden absolute inset-0"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
-                        backdropFilter: 'blur(20px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 15px rgba(255, 255, 255, 0.1),
-                          0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                          0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                        `,
+                        background: '#fff',
+                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
                         transform: 'rotateY(180deg)',
                         backfaceVisibility: 'hidden',
                         WebkitBackfaceVisibility: 'hidden',
                       }}
                     >
-                      <CardHeader className="pb-3">
+                      <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1">
+                          <CardTitle className="text-sm font-semibold line-clamp-2 flex-1">
                             {task.name}
                           </CardTitle>
                           <Badge
                             variant="outline"
                             style={{
-                              background: 'rgba(255, 255, 255, 0.1)',
-                              backdropFilter: 'blur(12px) saturate(180%)',
-                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
-                              color: `rgba(${flippedCardStatus ? getStatusColorRGB(flippedCardStatus) : '148, 163, 184'}, 0.6)`,
-                              boxShadow: `
-                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                0 0 8px 0 rgba(${flippedCardStatus ? getStatusColorRGB(flippedCardStatus) : '148, 163, 184'}, 0.15)
-                              `,
+                              background: '#fff',
+                              border: '1px solid rgba(0, 0, 0, 0.1)',
+                              color: flippedCardStatus ? `rgb(${getStatusColorRGB(flippedCardStatus)})` : 'rgb(100, 116, 139)',
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                             }}
                           >
                             {flippedCardStatus ? statusConfig[flippedCardStatus]?.label : ''}
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="flex-1 flex flex-col space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">
+                      <CardContent className="flex-1 flex flex-col space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium">
                             Informe o motivo {flippedCardStatus === 'not-executed' ? 'para não executar' : 'para aguardar ação'}:
                           </label>
                           <Input
@@ -1116,7 +1103,10 @@ const TaskApp: React.FC = () => {
                 </div>
               ))}
             </div>
-          ))}
+            );
+          })}
+          </>
+          )}
         </div>
       )}
 

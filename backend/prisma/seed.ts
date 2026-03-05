@@ -32,30 +32,17 @@ async function main() {
     console.log(`🔄 ${result.count} usuário(s) migrado(s) de "employee" para "backoffice"`);
   }
 
-  // Atualizar usuários existentes para ter authorizationStatus 'approved'
-  const existingUsers = await prisma.user.findMany({
-    where: {
-      OR: [
-        { authorizationStatus: null },
-        { authorizationStatus: { not: 'approved' } },
-      ],
-    },
-  });
-
-  if (existingUsers.length > 0) {
+  // Aprovar usuários que não estão aprovados (pending/rejected)
+  try {
     const result = await prisma.user.updateMany({
-      where: {
-        OR: [
-          { authorizationStatus: null },
-          { authorizationStatus: { not: 'approved' } },
-        ],
-      },
-      data: {
-        authorizationStatus: 'approved',
-        active: true,
-      },
+      where: { authorizationStatus: { not: 'approved' } },
+      data: { authorizationStatus: 'approved', active: true },
     });
-    console.log(`✅ ${result.count} usuário(s) existente(s) marcado(s) como aprovado(s)`);
+    if (result.count > 0) {
+      console.log(`✅ ${result.count} usuário(s) marcado(s) como aprovado(s)`);
+    }
+  } catch {
+    // Ignora se não houver usuários ou coluna diferente
   }
 
   // Criar gestor admin (se não existir)

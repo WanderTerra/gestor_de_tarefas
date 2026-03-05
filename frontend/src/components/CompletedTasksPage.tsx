@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter,
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
@@ -746,7 +746,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                   `,
                                 }}
                               >
-                                👤 {task.assignedTo.name}
+                                <UserIcon className="w-3 h-3 shrink-0 inline mr-1 align-middle" />
+                                {task.assignedTo.name}
                               </Badge>
                             )}
 
@@ -774,7 +775,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                           `,
                                         }}
                                       >
-                                        🔁 {formatRecurringDays(task.recurringDays)}
+                                        <Repeat className="w-3 h-3 shrink-0 inline mr-1 align-middle" />
+                                        {formatRecurringDays(task.recurringDays)}
                                       </Badge>
                                     )}
                                     {task.timeLimit && (

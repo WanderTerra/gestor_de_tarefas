@@ -78,48 +78,49 @@ async function start() {
   }
 
   try {
-    app.listen(env.PORT, async () => {
+    app.listen(env.PORT, () => {
       console.log(`🚀 Backend rodando em http://localhost:${env.PORT}`);
       console.log(`📋 API: http://localhost:${env.PORT}/api`);
       console.log(`🏥 Health: http://localhost:${env.PORT}/api/health`);
       console.log(`🌍 Ambiente: ${env.NODE_ENV}`);
 
-      // Testar conexão com o banco
-      const { testDatabaseConnection } = await import('./config/prisma.js');
-      const dbConnected = await testDatabaseConnection();
-      if (!dbConnected) {
-        console.error('❌ ATENÇÃO: Banco de dados não está acessível!');
-        console.error('   O servidor continuará rodando, mas as operações de banco falharão.');
-        console.error('   Verifique a conexão e tente novamente.');
-      } else {
-        console.log('✅ Conexão com banco de dados estabelecida com sucesso.');
-      }
-
-      // Verificar e criar alertas de tarefas atrasadas ao iniciar
-      try {
-        await overdueService.checkAndCreateAlerts();
-        await overdueService.checkTimeLimitOverdue();
-      } catch (err) {
-        console.error('⚠️ Erro ao verificar tarefas atrasadas:', err);
-      }
-
-      // Verificar alertas do dia anterior a cada hora
-      setInterval(async () => {
+      // Inicialização assíncrona em background (não bloqueia o servidor)
+      (async () => {
         try {
-          await overdueService.checkAndCreateAlerts();
+          const { testDatabaseConnection } = await import('./config/prisma.js');
+          const dbConnected = await testDatabaseConnection();
+          if (!dbConnected) {
+            console.error('❌ ATENÇÃO: Banco de dados não está acessível!');
+            console.error('   Ajuste DATABASE_URL no arquivo backend/.env e tenha MySQL/MariaDB rodando.');
+            console.error('   Crie o banco: CREATE DATABASE gestor_tarefas;');
+            console.error('   Depois: cd backend && npm run db:migrate && npm run db:seed');
+          } else {
+            console.log('✅ Conexão com banco de dados estabelecida com sucesso.');
+            try {
+              await overdueService.checkAndCreateAlerts();
+              await overdueService.checkTimeLimitOverdue();
+            } catch (err) {
+              console.error('⚠️ Erro ao verificar tarefas atrasadas:', err);
+            }
+            setInterval(async () => {
+              try {
+                await overdueService.checkAndCreateAlerts();
+              } catch (err) {
+                console.error('⚠️ Erro na verificação periódica de overdue:', err);
+              }
+            }, 60 * 60 * 1000);
+            setInterval(async () => {
+              try {
+                await overdueService.checkTimeLimitOverdue();
+              } catch (err) {
+                console.error('⚠️ Erro na verificação de horário limite:', err);
+              }
+            }, 60 * 1000);
+          }
         } catch (err) {
-          console.error('⚠️ Erro na verificação periódica de overdue:', err);
+          console.error('⚠️ Erro na inicialização:', err);
         }
-      }, 60 * 60 * 1000);
-
-      // Verificar horário limite a cada minuto
-      setInterval(async () => {
-        try {
-          await overdueService.checkTimeLimitOverdue();
-        } catch (err) {
-          console.error('⚠️ Erro na verificação de horário limite:', err);
-        }
-      }, 60 * 1000);
+      })();
     });
   } catch (error) {
     console.error('❌ Falha ao iniciar o servidor:', error);

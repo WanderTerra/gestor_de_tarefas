@@ -1,13 +1,20 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
   CalendarCheck, BadgeCheck, Users, UserPlus, FileSearch, 
-  Bell, LogOut, ClipboardCheck, Shield
+  Bell, LogOut, Shield, ClipboardCheck
 } from 'lucide-react';
 import { useButtonInteraction } from '@/hooks/useButtonInteraction';
 import { useAuth } from '@/contexts/AuthContext';
 import { overdueApi, OverdueAlert, authApi } from '@/services/api';
 import { User } from '@/types/user';
 import { Task, TaskStatus } from '@/types/task';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests';
 
@@ -18,56 +25,53 @@ interface HeaderProps {
   isTerminalStatus?: (status: TaskStatus) => boolean;
 }
 
-// Helper para verificar se status é terminal
-const defaultIsTerminalStatus = (status: string): boolean => {
-  return status === 'completed' || status === 'not-executed';
-};
+const defaultIsTerminalStatus = (status: string): boolean =>
+  status === 'completed' || status === 'not-executed';
 
-/** Componente de botão de navegação com interações visuais */
+/** Botão de navegação — estilo segmented: ativo = pill preenchida, inativo = transparente */
 const NavButton: React.FC<{
   onClick: () => void;
   isActive?: boolean;
   icon: React.ReactNode;
   label: string;
-}> = ({ onClick, isActive = false, icon, label }) => {
+  accentColor?: string; // para Concluídas (verde)
+}> = ({ onClick, isActive = false, icon, label, accentColor }) => {
   const buttonInteraction = useButtonInteraction(onClick, {
-    rippleColor: 'rgba(255, 255, 255, 0.9)',
-    scaleOnClick: 0.90,
-    rippleDuration: 800,
-    scaleDuration: 200,
+    rippleColor: isActive ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.06)',
+    scaleOnClick: 0.97,
+    rippleDuration: 600,
+    scaleDuration: 150,
   });
+
+  const activeBg = accentColor || 'linear-gradient(135deg, #334155 0%, #1e293b 100%)';
+  const activeColor = 'rgba(255, 255, 255, 0.98)';
 
   return (
     <button
       {...buttonInteraction}
-      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-250 ease-out min-w-0"
       style={{
-        background: isActive
-          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.3) 100%)'
-          : 'transparent',
-        border: isActive ? '1px solid rgba(255, 255, 255, 0.3)' : 'none',
-        color: isActive ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.7)',
+        background: isActive ? activeBg : 'transparent',
+        color: isActive ? activeColor : 'rgba(30, 41, 59, 0.85)',
         boxShadow: isActive
-          ? `inset 0 1px 0 0 rgba(255, 255, 255, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.05)`
+          ? '0 2px 8px rgba(15, 23, 42, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
           : 'none',
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
-          e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)';
-          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-          e.currentTarget.style.boxShadow = 'inset 0 1px 0 0 rgba(255, 255, 255, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
+          e.currentTarget.style.color = 'rgba(15, 23, 42, 0.95)';
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
           e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.border = 'none';
-          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.color = 'rgba(30, 41, 59, 0.85)';
         }
       }}
     >
       {icon}
-      <span className="hidden lg:inline">{label}</span>
+      <span className="hidden lg:inline truncate">{label}</span>
     </button>
   );
 };
@@ -75,9 +79,15 @@ const NavButton: React.FC<{
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], isTerminalStatus }) => {
   const { logout, isManager, user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [pendingRequests, setPendingRequests] = useState<User[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  const checkIsTerminal = isTerminalStatus
+    ? (status: string) => isTerminalStatus(status as TaskStatus)
+    : defaultIsTerminalStatus;
+  const activeTasksCount = tasks.filter((t) => !checkIsTerminal(t.status)).length;
 
   // Hooks de interação para botões
   const logoButtonInteraction = useButtonInteraction(() => onNavigate('tasks'), { 
@@ -97,6 +107,12 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
     scaleOnClick: 0.90,
     rippleDuration: 800,
     scaleDuration: 200,
+  });
+  const avatarButtonInteraction = useButtonInteraction(() => setShowUserModal(true), {
+    rippleColor: 'rgba(255, 255, 255, 0.5)',
+    scaleOnClick: 0.95,
+    rippleDuration: 600,
+    scaleDuration: 150,
   });
 
   // Carregar alertas e solicitações
@@ -133,11 +149,6 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
     };
   }, [showNotifications]);
 
-  const checkIsTerminal = isTerminalStatus 
-    ? (status: string) => isTerminalStatus(status as TaskStatus)
-    : defaultIsTerminalStatus;
-  const activeTasksCount = tasks.filter((t) => !checkIsTerminal(t.status)).length;
-
   return (
     <header
       className="sticky top-0 z-50"
@@ -156,13 +167,14 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
       }}
     >
       <div className="container mx-auto px-4 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-[72px]">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 h-16 md:h-[72px]">
           {/* ── Lado esquerdo: Logo + título (clicável) ── */}
-          <button
-            {...logoButtonInteraction}
-            className="flex items-center gap-3 group focus:outline-none"
-            title="Voltar para Tarefas"
-          >
+          <div className="flex items-center justify-start min-w-0">
+            <button
+              {...logoButtonInteraction}
+              className="flex items-center gap-3 group focus:outline-none"
+              title="Voltar para Tarefas"
+            >
             <div className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform">
               <img
                 src="/logosemfundomenor.png"
@@ -178,42 +190,51 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
                 Painel de controle
               </p>
             </div>
-          </button>
+            </button>
+          </div>
 
-          {/* ── Centro: Navegação (botões agrupados) ── */}
-          <nav className="flex items-center gap-0.5">
+          {/* ── Centro: Navegação em barra única (segmented control) ── */}
+          <nav
+            className="flex items-center p-1.5 rounded-2xl gap-0.5"
+            style={{
+              background: 'rgba(226, 232, 240, 0.92)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(203, 213, 225, 0.9)',
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 10px rgba(0, 0, 0, 0.08)',
+            }}
+          >
             <NavButton
               onClick={() => onNavigate('tasks')}
               isActive={currentPage === 'tasks'}
-              icon={<CalendarCheck className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.8)' }} />}
+              icon={<CalendarCheck className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
               label="Tarefas"
             />
-
             <NavButton
               onClick={() => onNavigate('completed')}
               isActive={currentPage === 'completed'}
-              icon={<BadgeCheck className="w-4 h-4" style={{ color: 'rgba(16, 185, 129, 0.9)' }} />}
+              accentColor="linear-gradient(135deg, #059669 0%, #047857 100%)"
+              icon={<BadgeCheck className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
               label="Concluídas"
             />
-
             {isManager && (
               <>
                 <NavButton
                   onClick={() => onNavigate('users')}
                   isActive={currentPage === 'users'}
-                  icon={<Users className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.8)' }} />}
+                  icon={<Users className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
                   label="Usuários"
                 />
                 <NavButton
                   onClick={() => onNavigate('authorization-requests')}
                   isActive={currentPage === 'authorization-requests'}
-                  icon={<UserPlus className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.8)' }} />}
+                  icon={<UserPlus className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
                   label="Solicitações"
                 />
                 <NavButton
                   onClick={() => onNavigate('audit')}
                   isActive={currentPage === 'audit'}
-                  icon={<FileSearch className="w-4 h-4" style={{ color: 'rgba(0, 0, 0, 0.8)' }} />}
+                  icon={<FileSearch className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
                   label="Auditoria"
                 />
               </>
@@ -221,31 +242,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
           </nav>
 
           {/* ── Lado direito: Contador + Notificações + Perfil + Sair ── */}
-          <div className="flex items-center gap-3">
-            {/* Contador de tarefas ativas */}
-            <div 
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                  0 1px 2px 0 rgba(0, 0, 0, 0.05)
-                `,
-              }}
-            >
-              <ClipboardCheck className="w-3.5 h-3.5" style={{ color: 'rgba(0, 0, 0, 0.8)' }} />
-              <span className="text-sm font-semibold" style={{ color: 'rgba(0, 0, 0, 0.9)' }}>
-                {activeTasksCount}
-              </span>
-              <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
-                ativa{activeTasksCount !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            {/* Separador */}
-            <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
-
+          <div className="flex items-center justify-end gap-4 min-w-0">
             {/* Notification bell */}
             {((overdueAlerts?.length ?? 0) > 0 || (isManager && (pendingRequests?.length ?? 0) > 0)) && (
               <div className="relative" ref={notifRef}>
@@ -389,80 +386,105 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
             )}
 
             {/* Separador */}
-            <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
+            <div className="w-px h-8 hidden sm:block rounded-full" style={{ background: 'rgba(0, 0, 0, 0.12)' }} />
 
-            {/* Avatar + nome */}
-            <div className="flex items-center gap-2.5">
-              <div 
-                className="flex items-center justify-center w-9 h-9 rounded-full shadow-md"
+            {/* Um único bloco: avatar (abre modal) + Sair */}
+            <div
+              className="flex items-center gap-1 p-1 rounded-xl"
+              style={{
+                background: 'rgba(226, 232, 240, 0.92)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(203, 213, 225, 0.9)',
+                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              <button
+                {...avatarButtonInteraction}
+                className="flex items-center justify-center w-9 h-9 rounded-full shrink-0 transition-transform hover:scale-105"
+                title="Ver informações"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: `
-                    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-                    0 2px 8px 0 rgba(0, 0, 0, 0.15)
-                  `,
+                  background: 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.12)',
                 }}
               >
                 <span className="text-sm font-bold text-white uppercase">
                   {user?.name?.charAt(0) || '?'}
                 </span>
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-semibold leading-tight" style={{ color: 'rgba(0, 0, 0, 0.9)' }}>
+              </button>
+              <button
+                {...logoutButtonInteraction}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                title="Sair"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(185, 28, 28, 0.9)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(220, 38, 38, 0.12)';
+                  e.currentTarget.style.color = 'rgba(185, 28, 28, 1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'rgba(185, 28, 28, 0.9)';
+                }}
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Modal de informações (avatar) — nome, perfil e tarefas ativas */}
+          <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div
+                    className="flex items-center justify-center w-10 h-10 rounded-full shrink-0"
+                    style={{
+                      background: 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                    }}
+                  >
+                    <span className="text-base font-bold text-white uppercase">
+                      {user?.name?.charAt(0) || '?'}
+                    </span>
+                  </div>
                   {user?.name}
-                </p>
-                <div className="flex items-center gap-1">
-                  {isManager ? (
-                    <span 
-                      className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                </DialogTitle>
+                <DialogDescription asChild>
+                  <div className="space-y-3 pt-1">
+                    <p className="text-sm text-slate-600">
+                      {isManager ? (
+                        <span className="inline-flex items-center gap-1.5 font-medium text-slate-700">
+                          <Shield className="w-4 h-4" />
+                          Gestor
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">Funcionário</span>
+                      )}
+                    </p>
+                    <div
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.3)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        color: 'rgba(0, 0, 0, 0.7)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                          0 1px 2px 0 rgba(0, 0, 0, 0.05)
-                        `,
+                        background: 'rgba(226, 232, 240, 0.8)',
+                        border: '1px solid rgba(203, 213, 225, 0.8)',
                       }}
                     >
-                      <Shield className="w-2.5 h-2.5" />
-                      Gestor
-                    </span>
-                  ) : (
-                    <span className="text-[10px]" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>Funcionário</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Separador */}
-            <div className="w-px h-8 hidden sm:block" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
-
-            {/* Sair */}
-            <button
-              {...logoutButtonInteraction}
-              className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-              title="Sair"
-              style={{
-                background: 'transparent',
-                color: 'rgba(0, 0, 0, 0.6)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
-                e.currentTarget.style.color = 'rgba(220, 38, 38, 0.9)';
-                e.currentTarget.style.border = '1px solid rgba(220, 38, 38, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'rgba(0, 0, 0, 0.6)';
-                e.currentTarget.style.border = 'none';
-              }}
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
+                      <ClipboardCheck className="w-4 h-4 shrink-0 text-slate-600" />
+                      <span className="font-semibold text-slate-800">{activeTasksCount}</span>
+                      <span className="text-slate-600">
+                        tarefa{activeTasksCount !== 1 ? 's' : ''} ativa{activeTasksCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </header>

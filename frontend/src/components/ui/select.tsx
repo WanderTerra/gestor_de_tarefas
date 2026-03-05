@@ -40,16 +40,9 @@ function SelectTrigger({
         className
       )}
       style={{
-        background: 'rgba(255, 255, 255, 0.4)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        boxShadow: `
-          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-          0 0 0 1px rgba(255, 255, 255, 0.2),
-          0 0 10px rgba(255, 255, 255, 0.08),
-          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-        `,
+        background: '#fff',
+        border: '1px solid #d1d5db',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
         ...style,
       }}
       {...props}
@@ -79,18 +72,9 @@ function SelectContent({
           className
         )}
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: `
-            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-            0 0 0 1px rgba(255, 255, 255, 0.2),
-            0 0 15px rgba(255, 255, 255, 0.1),
-            0 4px 16px 0 rgba(0, 0, 0, 0.12),
-            0 1px 4px 0 rgba(0, 0, 0, 0.08),
-            inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-          `,
+          background: '#fff',
+          border: '1px solid #d1d5db',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
         }}
         position={position}
         {...props}
@@ -133,7 +117,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "focus:bg-slate-200/80 focus:text-slate-900 [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}

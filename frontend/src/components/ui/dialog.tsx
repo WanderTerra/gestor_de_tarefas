@@ -61,23 +61,17 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onInteractOutside={(e) => e.preventDefault()}
         className={cn(
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg p-6 duration-200 sm:max-w-lg",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg p-6 duration-200 sm:max-w-lg text-slate-800 [&_input::placeholder]:text-slate-500 [&_textarea::placeholder]:text-slate-500 [&_[data-placeholder]]:text-slate-500",
           className
         )}
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
+          background: 'rgba(148, 163, 184, 0.25)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
-          boxShadow: `
-            inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
-            0 0 0 1px rgba(255, 255, 255, 0.15),
-            0 0 20px rgba(255, 255, 255, 0.08),
-            0 4px 16px 0 rgba(0, 0, 0, 0.08),
-            0 1px 4px 0 rgba(0, 0, 0, 0.04),
-            inset 0 -1px 0 0 rgba(0, 0, 0, 0.04)
-          `,
+          border: '3px solid #4b5563',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
         }}
         {...props}
       >

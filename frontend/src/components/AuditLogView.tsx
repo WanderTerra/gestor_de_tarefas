@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertCircle, ChevronLeft, ChevronRight, FileText, ChevronDown, ChevronUp, Clock, CalendarCheck } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronLeft, ChevronRight, FileText, ChevronDown, ChevronUp, Clock, CalendarCheck, X } from 'lucide-react';
 import { AuditLog } from '@/types/user';
 import { auditApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
@@ -275,7 +275,7 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
             <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span className="text-sm flex-1">{error}</span>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)} className="text-red-700">✕</Button>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)} className="text-red-700"><X className="w-4 h-4" /></Button>
             </div>
           )}
 

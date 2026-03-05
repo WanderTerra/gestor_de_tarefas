@@ -123,7 +123,7 @@ export function useNotifications() {
 
         // Se a tarefa acabou de ficar atrasada (mudou de false para true)
         if (!previousIsOverdue && currentIsOverdue) {
-          console.log(`🔔 Tarefa ${task.id} ficou atrasada!`, {
+          console.log('[Notifications] Tarefa ficou atrasada:', task.id, {
             taskName: task.name,
             timeLimit: task.timeLimit,
             currentTime,
@@ -147,8 +147,8 @@ export function useNotifications() {
               ? `Horário limite ultrapassado (${task.timeLimit})`
               : 'Tarefa pendente do dia anterior';
 
-            console.log('📤 Enviando notificação...', { taskName, reason });
-            sendNotification('⚠️ Tarefa Atrasada', {
+            console.log('[Notifications] Enviando notificação...', { taskName, reason });
+            sendNotification('Tarefa Atrasada', {
               body: `${taskName}\n${reason}`,
               tag: `task-overdue-${task.id}`, // Evita duplicatas
             });
@@ -185,7 +185,7 @@ export function useNotifications() {
               ? `Responsável: ${alert.task.assignedTo.name}`
               : 'Sem responsável atribuído';
 
-            sendNotification('🔔 Nova Tarefa Atrasada', {
+            sendNotification('Nova Tarefa Atrasada', {
               body: `${taskName}\n${assignedTo}`,
               tag: `alert-${alert.id}`, // Evita duplicatas
             });
@@ -226,7 +226,7 @@ export function useNotifications() {
             ? '1 nova solicitação de acesso aguardando aprovação'
             : `${newCount} novas solicitações de acesso aguardando aprovação`;
           
-          sendNotification('👤 Nova Solicitação de Acesso', {
+          sendNotification('Nova Solicitação de Acesso', {
             body: message,
             tag: 'new-authorization-request',
           });

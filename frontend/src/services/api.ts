@@ -27,18 +27,18 @@ function getApiUrl(): string {
       // Quando acessa por localhost, usa URL completa para garantir que funcione
       // mesmo se o proxy do Vite não estiver funcionando corretamente
       const backendUrl = 'http://localhost:3001/api';
-      console.log('🏠 Acesso por localhost. Usando backend em:', backendUrl);
+      console.log('[API] Acesso por localhost. Usando backend em:', backendUrl);
       return backendUrl;
     }
     
     // Se estiver sendo acessado pela rede (IP), usa o mesmo IP com porta do backend
     // O proxy do Vite pode não funcionar quando acessado por IP, então usa URL completa
     const backendUrl = `http://${hostname}:3001/api`;
-    console.log('🌐 Acesso pela rede detectado. Usando backend em:', backendUrl);
-    console.log('💡 Certifique-se de que o backend está acessível neste IP e porta 3001');
+    console.log('[API] Acesso pela rede detectado. Usando backend em:', backendUrl);
+    console.log('[API] Certifique-se de que o backend está acessível neste IP e porta 3001');
     return backendUrl;
   } catch (error) {
-    console.error('❌ Erro ao determinar URL da API:', error);
+    console.error('[API] Erro ao determinar URL da API:', error);
     // Fallback seguro
     return '/api';
   }
@@ -48,7 +48,7 @@ const API_URL = getApiUrl();
 
 // Log da URL da API em desenvolvimento para debug
 if (import.meta.env.DEV) {
-  console.log('🔧 API_URL configurada como:', API_URL);
+  console.log('[API] API_URL configurada como:', API_URL);
 }
 
 // ─── Token Management ──────────────────────────────────────────────
@@ -174,13 +174,13 @@ async function fetchWithErrorHandling<T>(
   try {
     // Log detalhado em desenvolvimento
     if (import.meta.env.DEV) {
-      console.log('🌐 Fazendo requisição:', options?.method || 'GET', url);
+      console.log('[API] Fazendo requisição:', options?.method || 'GET', url);
     }
     const response = await fetch(url, options);
     
     // Log da resposta em desenvolvimento
     if (import.meta.env.DEV) {
-      console.log('📥 Resposta recebida:', response.status, response.statusText, 'de', url);
+      console.log('[API] Resposta recebida:', response.status, response.statusText, 'de', url);
     }
     
     return handleResponse<T>(response);
