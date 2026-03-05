@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon,
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import EditTaskDialog from '@/components/EditTaskDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { User } from '@/types/user';
+import { User, getRoleLabel } from '@/types/user';
 
 interface CompletedTasksPageProps {
   onBack: () => void;
@@ -40,54 +40,10 @@ function formatDateTime(iso: string): string {
   return `${date} às ${time}`;
 }
 
-/** Retorna "dd/mm/aaaa" para hoje */
-function todayBR(): string {
+/** Retorna "YYYY-MM-DD" para hoje (formato ISO para input type="date") */
+function todayISO(): string {
   const d = new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
-}
-
-/** Converte formato brasileiro (dd/mm/aaaa) para ISO (aaaa-mm-dd) */
-function brToISO(brDate: string): string {
-  const parts = brDate.split('/');
-  if (parts.length !== 3) return '';
-  const [day, month, year] = parts;
-  return `${year}-${month}-${day}`;
-}
-
-/** Aplica máscara de data brasileira (dd/mm/aaaa) */
-function applyDateMask(value: string): string {
-  // Remove tudo que não é número
-  const numbers = value.replace(/\D/g, '');
-  
-  // Aplica a máscara
-  if (numbers.length <= 2) {
-    return numbers;
-  } else if (numbers.length <= 4) {
-    return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
-  } else {
-    return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4, 8)}`;
-  }
-}
-
-/** Valida data brasileira (dd/mm/aaaa) */
-function isValidBRDate(brDate: string): boolean {
-  const parts = brDate.split('/');
-  if (parts.length !== 3) return false;
-  
-  const day = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  const year = parseInt(parts[2], 10);
-  
-  if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
-  if (month < 1 || month > 12) return false;
-  if (day < 1 || day > 31) return false;
-  if (year < 1900 || year > 2100) return false;
-  
-  const date = new Date(year, month - 1, day);
-  return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
+  return d.toISOString().slice(0, 10);
 }
 
 const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavigate }) => {
@@ -115,26 +71,22 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
 
-  // Filtro de datas — default: hoje (formato brasileiro)
-  const [dateFrom, setDateFrom] = useState(() => todayBR());
-  const [dateTo, setDateTo] = useState(() => todayBR());
+  // Filtro de datas — default: hoje (formato ISO para input type="date")
+  const [dateFrom, setDateFrom] = useState(() => todayISO());
+  const [dateTo, setDateTo] = useState(() => todayISO());
 
-  const fetchCompleted = useCallback(async (fromBR: string, toBR: string) => {
+  const fetchCompleted = useCallback(async (from: string, to: string) => {
     try {
       setLoading(true);
       setError(null);
       
-      // Converte formato brasileiro para ISO antes de enviar à API
-      const fromISO = brToISO(fromBR);
-      const toISO = brToISO(toBR);
-      
-      if (!fromISO || !toISO || !isValidBRDate(fromBR) || !isValidBRDate(toBR)) {
-        setError('Por favor, insira datas válidas no formato dd/mm/aaaa');
+      if (!from || !to) {
+        setError('Por favor, selecione ambas as datas');
         setLoading(false);
         return;
       }
       
-      const data = await taskApi.getCompleted({ from: fromISO, to: toISO });
+      const data = await taskApi.getCompleted({ from, to });
       setTasks(data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao carregar tarefas concluídas';
@@ -144,13 +96,27 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     }
   }, []);
 
-  // Carregar na montagem e quando filtro mudar
+  // Carregar na montagem inicial
   useEffect(() => {
-    // Só busca se ambas as datas são válidas
-    if (isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
+    fetchCompleted(dateFrom, dateTo);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handler para buscar
+  const handleSearch = () => {
+    if (dateFrom && dateTo) {
       fetchCompleted(dateFrom, dateTo);
+    } else {
+      setError('Por favor, selecione ambas as datas');
     }
-  }, [dateFrom, dateTo, fetchCompleted]);
+  };
+
+  // Handler para botão "Hoje"
+  const handleToday = () => {
+    const today = todayISO();
+    setDateFrom(today);
+    setDateTo(today);
+    fetchCompleted(today, today);
+  };
 
   /** Converte string "seg,qua,sex" em labels legíveis */
   const formatRecurringDays = (days: string | null | undefined): string => {
@@ -202,38 +168,63 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     ? tasks.filter(t => t.assignedToId === parseInt(selectedUserId))
     : tasks;
 
-  // Agrupar por usuário (se gestor) e depois por data
-  let groupedData: Array<{ userLabel: string; userId: string | null; dateGroups: Array<[string, Task[]]> }> = [];
+  // Agrupar por role, depois por usuário, e depois por data
+  let groupedData: Array<{ roleLabel: string; role: string | null; users: Array<{ userLabel: string; userId: string | null; dateGroups: Array<[string, Task[]]> }> }> = [];
 
   if (isManager) {
-    // Agrupar primeiro por usuário
-    const groupedByUser: Record<string, Task[]> = {};
+    // Agrupar primeiro por role, depois por usuário
+    const groupedByRole: Record<string, Record<string, Task[]>> = {};
     for (const t of filteredTasks) {
       const userId = t.assignedToId?.toString() || 'unassigned';
-      const userName = employees.find(e => e.id === t.assignedToId)?.name || 'Sem atribuição';
+      const user = employees.find(e => e.id === t.assignedToId);
+      const userName = user?.name || 'Sem atribuição';
+      const role = user?.role || 'unassigned';
+      
+      if (!groupedByRole[role]) groupedByRole[role] = {};
       const userKey = `${userId}|${userName}`;
-      if (!groupedByUser[userKey]) groupedByUser[userKey] = [];
-      groupedByUser[userKey].push(t);
+      if (!groupedByRole[role][userKey]) groupedByRole[role][userKey] = [];
+      groupedByRole[role][userKey].push(t);
     }
 
-    // Para cada usuário, agrupar por data
-    for (const [userKey, userTasks] of Object.entries(groupedByUser)) {
-      const [userId, userName] = userKey.split('|');
-      const groupedByDate: Record<string, Task[]> = {};
-      for (const t of userTasks) {
-        const dateKey = new Date(t.updatedAt).toLocaleDateString('pt-BR');
-        if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-        groupedByDate[dateKey].push(t);
+    // Para cada role e usuário, agrupar por data
+    for (const [role, usersGroup] of Object.entries(groupedByRole)) {
+      const roleLabel = role !== 'unassigned' ? getRoleLabel(role as any) : 'Sem atribuição';
+      const users: Array<{ userLabel: string; userId: string | null; dateGroups: Array<[string, Task[]]> }> = [];
+      
+      for (const [userKey, userTasks] of Object.entries(usersGroup)) {
+        const [userId, userName] = userKey.split('|');
+        const groupedByDate: Record<string, Task[]> = {};
+        for (const t of userTasks) {
+          const dateKey = new Date(t.updatedAt).toLocaleDateString('pt-BR');
+          if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+          groupedByDate[dateKey].push(t);
+        }
+        const dateGroups = Object.entries(groupedByDate).sort(([a], [b]) => {
+          return new Date(b.split('/').reverse().join('-')).getTime() - new Date(a.split('/').reverse().join('-')).getTime();
+        });
+        users.push({ userLabel: userName, userId, dateGroups });
       }
-      const dateGroups = Object.entries(groupedByDate).sort(([a], [b]) => {
-        // Ordenar datas (mais recente primeiro)
-        return new Date(b.split('/').reverse().join('-')).getTime() - new Date(a.split('/').reverse().join('-')).getTime();
+      
+      // Ordenar usuários: primeiro os com tarefas atrasadas, depois por nome
+      users.sort((a, b) => {
+        const aHasOverdue = a.dateGroups.some(([, tasks]) => tasks.some(t => t.isOverdue));
+        const bHasOverdue = b.dateGroups.some(([, tasks]) => tasks.some(t => t.isOverdue));
+        if (aHasOverdue && !bHasOverdue) return -1;
+        if (!aHasOverdue && bHasOverdue) return 1;
+        return a.userLabel.localeCompare(b.userLabel);
       });
-      groupedData.push({ userLabel: userName, userId, dateGroups });
+      
+      groupedData.push({ roleLabel, role: role !== 'unassigned' ? role : null, users });
     }
-
-    // Ordenar por nome do usuário
-    groupedData.sort((a, b) => a.userLabel.localeCompare(b.userLabel));
+    
+    // Ordenar roles: primeiro as com tarefas atrasadas, depois por nome
+    groupedData.sort((a, b) => {
+      const aHasOverdue = a.users.some(u => u.dateGroups.some(([, tasks]) => tasks.some(t => t.isOverdue)));
+      const bHasOverdue = b.users.some(u => u.dateGroups.some(([, tasks]) => tasks.some(t => t.isOverdue)));
+      if (aHasOverdue && !bHasOverdue) return -1;
+      if (!aHasOverdue && bHasOverdue) return 1;
+      return a.roleLabel.localeCompare(b.roleLabel);
+    });
   } else {
     // Para não-gestores, apenas agrupar por data
     const groupedByDate: Record<string, Task[]> = {};
@@ -245,7 +236,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     const dateGroups = Object.entries(groupedByDate).sort(([a], [b]) => {
       return new Date(b.split('/').reverse().join('-')).getTime() - new Date(a.split('/').reverse().join('-')).getTime();
     });
-    groupedData.push({ userLabel: '', userId: null, dateGroups });
+    groupedData.push({ roleLabel: '', role: null, users: [{ userLabel: '', userId: null, dateGroups }] });
   }
 
   return (
@@ -348,16 +339,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                   <div className="relative flex-1">
                     <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                     <Input
-                      type="text"
+                      type="date"
                       value={dateFrom}
-                      onChange={(e) => {
-                        const masked = applyDateMask(e.target.value);
-                        if (masked.length <= 10) {
-                          setDateFrom(masked);
-                        }
-                      }}
-                      placeholder="dd/mm/aaaa"
-                      maxLength={10}
+                      onChange={(e) => setDateFrom(e.target.value)}
                       className="pl-10"
                       style={{
                         background: 'rgba(255, 255, 255, 0.4)',
@@ -379,16 +363,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                   <div className="relative flex-1">
                     <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                     <Input
-                      type="text"
+                      type="date"
                       value={dateTo}
-                      onChange={(e) => {
-                        const masked = applyDateMask(e.target.value);
-                        if (masked.length <= 10) {
-                          setDateTo(masked);
-                        }
-                      }}
-                      placeholder="dd/mm/aaaa"
-                      maxLength={10}
+                      onChange={(e) => setDateTo(e.target.value)}
                       className="pl-10"
                       style={{
                         background: 'rgba(255, 255, 255, 0.4)',
@@ -405,26 +382,67 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                     />
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setDateFrom(todayBR()); setDateTo(todayBR()); }}
-                  className="whitespace-nowrap"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.3)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    boxShadow: `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                      0 0 0 1px rgba(255, 255, 255, 0.2),
-                      0 0 10px rgba(255, 255, 255, 0.08),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                    `,
-                  }}
-                >
-                  Hoje
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleToday}
+                    className="whitespace-nowrap"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.3)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      boxShadow: `
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                        0 0 0 1px rgba(255, 255, 255, 0.2),
+                        0 0 10px rgba(255, 255, 255, 0.08),
+                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                      `,
+                    }}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    onClick={handleSearch}
+                    size="sm"
+                    className="whitespace-nowrap gap-2"
+                    disabled={loading}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      color: 'rgba(22, 101, 52, 0.8)',
+                      boxShadow: `
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                        0 0 0 1px rgba(34, 197, 94, 0.2),
+                        0 0 10px rgba(34, 197, 94, 0.1),
+                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                      `,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(16, 185, 129, 0.25) 100%)';
+                      e.currentTarget.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%)';
+                      e.currentTarget.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <Filter className="w-4 h-4" />
+                        Buscar
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -458,24 +476,41 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                 </div>
               )}
 
-            {groupedData.map(({ userLabel, userId, dateGroups }) => (
-              <div key={userId || 'no-user'} className="mb-8">
-                {/* Separador de usuário (apenas para gestores) */}
-                {isManager && userLabel && (
+            {groupedData.map(({ roleLabel, role, users }) => (
+              <div key={role || 'no-role'} className="mb-10">
+                {/* Separador de role (apenas para gestores) */}
+                {isManager && roleLabel && (
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
-                      <UserIcon className="w-4 h-4" />
-                      {userLabel}
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-200 text-base font-bold text-slate-800">
+                      <span className="text-lg">🏢</span>
+                      {roleLabel}
                     </div>
                     <div className="flex-1 h-px bg-slate-200" />
                     <span className="text-sm text-slate-600 font-medium">
-                      {dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0)} tarefa{dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0) !== 1 ? 's' : ''}
+                      {users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0)} tarefa{users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0) !== 1 ? 's' : ''}
                     </span>
                   </div>
                 )}
 
-                {/* Grupos por data */}
-                {dateGroups.map(([dateLabel, dateTasks]) => (
+                {/* Grupos por usuário */}
+                {users.map(({ userLabel, userId, dateGroups }) => (
+                  <div key={userId || 'no-user'} className={isManager ? "mb-8 ml-4" : "mb-8"}>
+                    {/* Separador de usuário (apenas para gestores) */}
+                    {isManager && userLabel && (
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
+                          <UserIcon className="w-4 h-4" />
+                          {userLabel}
+                        </div>
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="text-sm text-slate-600 font-medium">
+                          {dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0)} tarefa{dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0) !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Grupos por data */}
+                    {dateGroups.map(([dateLabel, dateTasks]) => (
                   <div key={dateLabel} className={isManager ? "mb-6 ml-4" : "mb-8"}>
                     {/* Separador de data */}
                     <div className="flex items-center gap-3 mb-4">
@@ -727,6 +762,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                       );
                     })}
                     </div>
+                  </div>
+                ))}
                   </div>
                 ))}
               </div>

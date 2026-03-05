@@ -19,7 +19,7 @@ export interface AuthUser {
   id: number;
   username: string;
   name: string;
-  role: string; // 'adm' | 'backoffice' | 'supervisor' | 'financeiro' | 'rh' | 'monitor'
+  role: string; // 'adm' | 'backoffice' | 'supervisor' | 'financeiro' | 'rh' | 'monitor' | 'ti-dev' | 'marketing'
 }
 
 declare global {

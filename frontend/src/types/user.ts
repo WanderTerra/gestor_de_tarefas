@@ -1,4 +1,4 @@
-export type UserRole = 'adm' | 'backoffice' | 'supervisor' | 'financeiro' | 'rh' | 'monitor';
+export type UserRole = 'adm' | 'backoffice' | 'supervisor' | 'financeiro' | 'rh' | 'monitor' | 'ti-dev' | 'marketing';
 
 // Helper para verificar se é administrador
 export function isManagerRole(role: string): boolean {
@@ -14,6 +14,8 @@ export function getRoleLabel(role: string): string {
     'financeiro': 'Financeiro',
     'rh': 'RH',
     'monitor': 'Monitor',
+    'ti-dev': 'TI/DEV',
+    'marketing': 'Marketing',
   };
   return labels[role] || role;
 }

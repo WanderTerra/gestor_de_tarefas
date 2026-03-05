@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Roles disponíveis: adm (manager) e os demais são employees
-export const UserRole = z.enum(['adm', 'backoffice', 'supervisor', 'financeiro', 'rh', 'monitor']);
+export const UserRole = z.enum(['adm', 'backoffice', 'supervisor', 'financeiro', 'rh', 'monitor', 'ti-dev', 'marketing']);
 
 // Helper para verificar se é administrador
 export function isManagerRole(role: string): boolean {

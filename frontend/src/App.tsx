@@ -173,29 +173,57 @@ const TaskApp: React.FC = () => {
     ? activeTasks.filter(t => t.assignedToId === parseInt(selectedUserId))
     : activeTasks;
 
-  // Agrupar por usuário (se gestor)
-  let groupedTasks: Array<{ userLabel: string; userId: string | null; tasks: Task[] }> = [];
+  // Agrupar por role e depois por usuário (se gestor)
+  let groupedTasks: Array<{ roleLabel: string; role: string | null; users: Array<{ userLabel: string; userId: string | null; tasks: Task[] }> }> = [];
 
   if (isManager) {
-    // Agrupar primeiro por usuário
-    const groupedByUser: Record<string, Task[]> = {};
+    // Agrupar primeiro por role, depois por usuário
+    const groupedByRole: Record<string, Record<string, Task[]>> = {};
     for (const t of filteredActiveTasks) {
       const userId = t.assignedToId?.toString() || 'unassigned';
-      const userName = employees.find(e => e.id === t.assignedToId)?.name || 'Sem atribuição';
+      const user = employees.find(e => e.id === t.assignedToId);
+      const userName = user?.name || 'Sem atribuição';
+      const role = user?.role || 'unassigned';
+      
+      if (!groupedByRole[role]) groupedByRole[role] = {};
       const userKey = `${userId}|${userName}`;
-      if (!groupedByUser[userKey]) groupedByUser[userKey] = [];
-      groupedByUser[userKey].push(t);
+      if (!groupedByRole[role][userKey]) groupedByRole[role][userKey] = [];
+      groupedByRole[role][userKey].push(t);
     }
 
-    // Converter para array e ordenar por nome do usuário
-    for (const [userKey, userTasks] of Object.entries(groupedByUser)) {
-      const [userId, userName] = userKey.split('|');
-      groupedTasks.push({ userLabel: userName, userId, tasks: userTasks });
+    // Converter para array e ordenar
+    for (const [role, usersGroup] of Object.entries(groupedByRole)) {
+      const roleLabel = role !== 'unassigned' ? getRoleLabel(role as any) : 'Sem atribuição';
+      const users: Array<{ userLabel: string; userId: string | null; tasks: Task[] }> = [];
+      
+      for (const [userKey, userTasks] of Object.entries(usersGroup)) {
+        const [userId, userName] = userKey.split('|');
+        users.push({ userLabel: userName, userId, tasks: userTasks });
+      }
+      
+      // Ordenar usuários: primeiro os com tarefas atrasadas, depois por nome
+      users.sort((a, b) => {
+        const aHasOverdue = a.tasks.some(t => isTaskOverdue(t));
+        const bHasOverdue = b.tasks.some(t => isTaskOverdue(t));
+        if (aHasOverdue && !bHasOverdue) return -1;
+        if (!aHasOverdue && bHasOverdue) return 1;
+        return a.userLabel.localeCompare(b.userLabel);
+      });
+      
+      groupedTasks.push({ roleLabel, role: role !== 'unassigned' ? role : null, users });
     }
-    groupedTasks.sort((a, b) => a.userLabel.localeCompare(b.userLabel));
+    
+    // Ordenar roles: primeiro as com tarefas atrasadas, depois por nome
+    groupedTasks.sort((a, b) => {
+      const aHasOverdue = a.users.some(u => u.tasks.some(t => isTaskOverdue(t)));
+      const bHasOverdue = b.users.some(u => u.tasks.some(t => isTaskOverdue(t)));
+      if (aHasOverdue && !bHasOverdue) return -1;
+      if (!aHasOverdue && bHasOverdue) return 1;
+      return a.roleLabel.localeCompare(b.roleLabel);
+    });
   } else {
     // Para não-gestores, apenas lista as tarefas
-    groupedTasks.push({ userLabel: '', userId: null, tasks: filteredActiveTasks });
+    groupedTasks.push({ roleLabel: '', role: null, users: [{ userLabel: '', userId: null, tasks: filteredActiveTasks }] });
   }
 
   useEffect(() => {
@@ -588,26 +616,43 @@ const TaskApp: React.FC = () => {
             </div>
           )}
 
-          {/* Grupos por usuário */}
-          {groupedTasks.map(({ userLabel, userId, tasks: userTasks }) => (
-            <div key={userId || 'no-user'} className={isManager ? "mb-8" : ""}>
-              {/* Separador de usuário (apenas para gestores) */}
-              {isManager && userLabel && (
+          {/* Grupos por role e usuário */}
+          {groupedTasks.map(({ roleLabel, role, users }) => (
+            <div key={role || 'no-role'} className={isManager ? "mb-10" : ""}>
+              {/* Separador de role (apenas para gestores) */}
+              {isManager && roleLabel && (
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
-                    <span className="text-lg">👤</span>
-                    {userLabel}
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-200 text-base font-bold text-slate-800">
+                    <span className="text-lg">🏢</span>
+                    {roleLabel}
                   </div>
                   <div className="flex-1 h-px bg-slate-200" />
                   <span className="text-sm text-slate-600 font-medium">
-                    {userTasks.length} tarefa{userTasks.length !== 1 ? 's' : ''}
+                    {users.reduce((sum, u) => sum + u.tasks.length, 0)} tarefa{users.reduce((sum, u) => sum + u.tasks.length, 0) !== 1 ? 's' : ''}
                   </span>
                 </div>
               )}
 
-              {/* Grid de cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-                {userTasks.map((task) => {
+              {/* Grupos por usuário */}
+              {users.map(({ userLabel, userId, tasks: userTasks }) => (
+                <div key={userId || 'no-user'} className={isManager ? "mb-8 ml-4" : ""}>
+                  {/* Separador de usuário (apenas para gestores) */}
+                  {isManager && userLabel && (
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
+                        <span className="text-lg">👤</span>
+                        {userLabel}
+                      </div>
+                      <div className="flex-1 h-px bg-slate-200" />
+                      <span className="text-sm text-slate-600 font-medium">
+                        {userTasks.length} tarefa{userTasks.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Grid de cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                    {userTasks.map((task) => {
                   const config = statusConfig[task.status as TaskStatus];
                   const isFlipped = flippedCard === task.id;
                   const isFading = fadingCards.has(task.id);
@@ -1016,7 +1061,9 @@ const TaskApp: React.FC = () => {
                 </div>
               );
                 })}
-              </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>
