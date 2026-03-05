@@ -1,36 +1,79 @@
 # systemd - Gestor de Tarefas Backend (Debian)
-# Colocar em: /etc/systemd/system/gestor-backend.service
-# Comandos:
-#   sudo systemctl daemon-reload
-#   sudo systemctl enable gestor-backend
-#   sudo systemctl start gestor-backend
-#   sudo systemctl status gestor-backend
+# 
+# INSTALAÇÃO:
+#   1. Copiar para: /etc/systemd/system/gestor-backend.service
+#   2. Ajustar caminhos (WorkingDirectory, EnvironmentFile) conforme necessário
+#   3. Ajustar User/Group conforme necessário
+#   4. Executar:
+#      sudo systemctl daemon-reload
+#      sudo systemctl enable gestor-backend
+#      sudo systemctl start gestor-backend
+#
+# COMANDOS ÚTEIS:
+#   Ver status:        sudo systemctl status gestor-backend
+#   Ver logs em tempo real: sudo journalctl -u gestor-backend -f
+#   Ver últimas 100 linhas: sudo journalctl -u gestor-backend -n 100
+#   Parar:              sudo systemctl stop gestor-backend
+#   Iniciar:            sudo systemctl start gestor-backend
+#   Reiniciar:          sudo systemctl restart gestor-backend
+#   Recarregar (após mudanças): sudo systemctl daemon-reload && sudo systemctl restart gestor-backend
 
 [Unit]
 Description=Gestor de Tarefas - API Backend
+Documentation=https://github.com/seu-usuario/gestor_de_tarefas
 After=network.target mariadb.service
 Wants=mariadb.service
+Requires=mariadb.service
 
 [Service]
 Type=simple
 User=portes
 Group=portes
 
-# Diretório da aplicação (caminho no servidor)
+# Diretório da aplicação (ajustar conforme necessário)
 WorkingDirectory=/home/portes/gestor_tarefas/gestor_de_tarefas/backend
 
 # Carregar variáveis de ambiente do arquivo .env
 EnvironmentFile=/home/portes/gestor_tarefas/gestor_de_tarefas/backend/.env
 
-# Comando para iniciar (Node 18+)
+# Comando para iniciar (usar caminho completo do node)
 ExecStart=/usr/bin/node dist/server.js
 
-# Reiniciar em caso de falha
-Restart=on-failure
-RestartSec=5
+# Política de reinício:
+# - always: sempre reinicia, mesmo após parada normal
+# - on-failure: reinicia apenas em caso de falha (código de saída != 0)
+# - on-abnormal: reinicia em caso de crash ou timeout
+# - on-abort: reinicia se foi abortado
+Restart=always
+RestartSec=10
 
-# Limites
+# Tentar reiniciar até 5 vezes em 5 minutos, depois parar
+StartLimitInterval=300
+StartLimitBurst=5
+
+# Timeout para parada graciosa (30 segundos)
+TimeoutStopSec=30
+
+# Matar processos filhos se o processo principal morrer
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Limites de recursos
 LimitNOFILE=65536
+LimitNPROC=4096
+
+# Segurança: não permitir escalação de privilégios
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Redirecionar logs para journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gestor-backend
+
+# Variáveis de ambiente adicionais (se necessário)
+# Environment=NODE_ENV=production
 
 [Install]
+# Iniciar automaticamente após boot do sistema
 WantedBy=multi-user.target
