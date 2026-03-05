@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2,
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
-import { taskApi, userApi } from '@/services/api';
+import { taskApi, userApi, UpdateTaskPayload } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import EditTaskDialog from '@/components/EditTaskDialog';
@@ -112,6 +113,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [deleting, setDeleting] = useState(false);
   const [employees, setEmployees] = useState<User[]>([]);
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
 
   // Filtro de datas — default: hoje (formato brasileiro)
   const [dateFrom, setDateFrom] = useState(() => todayBR());
@@ -167,7 +169,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   }, [isManager]);
 
   // Função para atualizar tarefa
-  const handleUpdateTask = async (taskId: number, data: Partial<Task>) => {
+  const handleUpdateTask = async (taskId: number, data: UpdateTaskPayload) => {
     try {
       const updated = await taskApi.update(taskId, data);
       setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
@@ -195,15 +197,56 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     }
   };
 
-  // Agrupar por data de conclusão
-  const groupedByDate: Record<string, Task[]> = {};
-  for (const t of tasks) {
-    const dateKey = new Date(t.updatedAt).toLocaleDateString('pt-BR');
-    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-    groupedByDate[dateKey].push(t);
-  }
+  // Filtrar tarefas por usuário (se gestor e filtro selecionado)
+  const filteredTasks = isManager && selectedUserId !== 'all'
+    ? tasks.filter(t => t.assignedToId === parseInt(selectedUserId))
+    : tasks;
 
-  const dateGroups = Object.entries(groupedByDate);
+  // Agrupar por usuário (se gestor) e depois por data
+  let groupedData: Array<{ userLabel: string; userId: string | null; dateGroups: Array<[string, Task[]]> }> = [];
+
+  if (isManager) {
+    // Agrupar primeiro por usuário
+    const groupedByUser: Record<string, Task[]> = {};
+    for (const t of filteredTasks) {
+      const userId = t.assignedToId?.toString() || 'unassigned';
+      const userName = employees.find(e => e.id === t.assignedToId)?.name || 'Sem atribuição';
+      const userKey = `${userId}|${userName}`;
+      if (!groupedByUser[userKey]) groupedByUser[userKey] = [];
+      groupedByUser[userKey].push(t);
+    }
+
+    // Para cada usuário, agrupar por data
+    for (const [userKey, userTasks] of Object.entries(groupedByUser)) {
+      const [userId, userName] = userKey.split('|');
+      const groupedByDate: Record<string, Task[]> = {};
+      for (const t of userTasks) {
+        const dateKey = new Date(t.updatedAt).toLocaleDateString('pt-BR');
+        if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+        groupedByDate[dateKey].push(t);
+      }
+      const dateGroups = Object.entries(groupedByDate).sort(([a], [b]) => {
+        // Ordenar datas (mais recente primeiro)
+        return new Date(b.split('/').reverse().join('-')).getTime() - new Date(a.split('/').reverse().join('-')).getTime();
+      });
+      groupedData.push({ userLabel: userName, userId, dateGroups });
+    }
+
+    // Ordenar por nome do usuário
+    groupedData.sort((a, b) => a.userLabel.localeCompare(b.userLabel));
+  } else {
+    // Para não-gestores, apenas agrupar por data
+    const groupedByDate: Record<string, Task[]> = {};
+    for (const t of filteredTasks) {
+      const dateKey = new Date(t.updatedAt).toLocaleDateString('pt-BR');
+      if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+      groupedByDate[dateKey].push(t);
+    }
+    const dateGroups = Object.entries(groupedByDate).sort(([a], [b]) => {
+      return new Date(b.split('/').reverse().join('-')).getTime() - new Date(a.split('/').reverse().join('-')).getTime();
+    });
+    groupedData.push({ userLabel: '', userId: null, dateGroups });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -271,89 +314,118 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                <label className="text-sm font-medium whitespace-nowrap min-w-[28px] text-slate-700">De</label>
-                <div className="relative flex-1">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
-                  <Input
-                    type="text"
-                    value={dateFrom}
-                    onChange={(e) => {
-                      const masked = applyDateMask(e.target.value);
-                      if (masked.length <= 10) {
-                        setDateFrom(masked);
-                      }
-                    }}
-                    placeholder="dd/mm/aaaa"
-                    maxLength={10}
-                    className="pl-10"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.4)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      boxShadow: `
-                        inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                        0 0 0 1px rgba(255, 255, 255, 0.2),
-                        0 0 10px rgba(255, 255, 255, 0.08),
-                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                      `,
-                    }}
-                  />
+            <div className="flex flex-col gap-4">
+              {/* Filtro por usuário (apenas para gestores) */}
+              {isManager && (
+                <div className="flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-slate-400" />
+                  <label className="text-sm font-medium whitespace-nowrap text-slate-700 min-w-[60px]">Usuário:</label>
+                  <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                    <SelectTrigger className="flex-1 max-w-[300px]" style={{
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                    }}>
+                      <SelectValue placeholder="Todos os usuários" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os usuários</SelectItem>
+                      {employees.map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id.toString()}>
+                          {emp.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                <label className="text-sm font-medium whitespace-nowrap min-w-[28px] text-slate-700">Até</label>
-                <div className="relative flex-1">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
-                  <Input
-                    type="text"
-                    value={dateTo}
-                    onChange={(e) => {
-                      const masked = applyDateMask(e.target.value);
-                      if (masked.length <= 10) {
-                        setDateTo(masked);
-                      }
-                    }}
-                    placeholder="dd/mm/aaaa"
-                    maxLength={10}
-                    className="pl-10"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.4)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      boxShadow: `
-                        inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                        0 0 0 1px rgba(255, 255, 255, 0.2),
-                        0 0 10px rgba(255, 255, 255, 0.08),
-                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                      `,
-                    }}
-                  />
+              )}
+
+              {/* Filtro de datas */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                  <label className="text-sm font-medium whitespace-nowrap min-w-[28px] text-slate-700">De</label>
+                  <div className="relative flex-1">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
+                    <Input
+                      type="text"
+                      value={dateFrom}
+                      onChange={(e) => {
+                        const masked = applyDateMask(e.target.value);
+                        if (masked.length <= 10) {
+                          setDateFrom(masked);
+                        }
+                      }}
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                      className="pl-10"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 10px rgba(255, 255, 255, 0.08),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                        `,
+                      }}
+                    />
+                  </div>
                 </div>
+                <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                  <label className="text-sm font-medium whitespace-nowrap min-w-[28px] text-slate-700">Até</label>
+                  <div className="relative flex-1">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
+                    <Input
+                      type="text"
+                      value={dateTo}
+                      onChange={(e) => {
+                        const masked = applyDateMask(e.target.value);
+                        if (masked.length <= 10) {
+                          setDateTo(masked);
+                        }
+                      }}
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                      className="pl-10"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.4)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        boxShadow: `
+                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                          0 0 0 1px rgba(255, 255, 255, 0.2),
+                          0 0 10px rgba(255, 255, 255, 0.08),
+                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                        `,
+                      }}
+                    />
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setDateFrom(todayBR()); setDateTo(todayBR()); }}
+                  className="whitespace-nowrap"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.3)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: `
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                      0 0 0 1px rgba(255, 255, 255, 0.2),
+                      0 0 10px rgba(255, 255, 255, 0.08),
+                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                    `,
+                  }}
+                >
+                  Hoje
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setDateFrom(todayBR()); setDateTo(todayBR()); }}
-                className="whitespace-nowrap"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.3)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: `
-                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                    0 0 0 1px rgba(255, 255, 255, 0.2),
-                    0 0 10px rgba(255, 255, 255, 0.08),
-                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                  `,
-                }}
-              >
-                Hoje
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -377,7 +449,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
         {/* Conteúdo */}
         {!loading && (
           <div>
-              {dateGroups.length === 0 && (
+              {groupedData.length === 0 && (
                 <div className="text-center py-16 space-y-3">
                   <CalendarDays className="w-12 h-12 text-slate-400 mx-auto" />
                   <p className="text-slate-500 text-lg">
@@ -386,23 +458,40 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                 </div>
               )}
 
-            {dateGroups.map(([dateLabel, dateTasks]) => (
-              <div key={dateLabel} className="mb-8">
-                {/* Separador de data */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-sm font-medium text-slate-600">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    {dateLabel}
+            {groupedData.map(({ userLabel, userId, dateGroups }) => (
+              <div key={userId || 'no-user'} className="mb-8">
+                {/* Separador de usuário (apenas para gestores) */}
+                {isManager && userLabel && (
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
+                      <UserIcon className="w-4 h-4" />
+                      {userLabel}
+                    </div>
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <span className="text-sm text-slate-600 font-medium">
+                      {dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0)} tarefa{dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0) !== 1 ? 's' : ''}
+                    </span>
                   </div>
-                  <div className="flex-1 h-px bg-slate-200" />
-                  <span className="text-xs text-slate-500">
-                    {dateTasks.length} tarefa{dateTasks.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                )}
 
-                {/* Grid de cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-                    {dateTasks.map((task) => {
+                {/* Grupos por data */}
+                {dateGroups.map(([dateLabel, dateTasks]) => (
+                  <div key={dateLabel} className={isManager ? "mb-6 ml-4" : "mb-8"}>
+                    {/* Separador de data */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-sm font-medium text-slate-600">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        {dateLabel}
+                      </div>
+                      <div className="flex-1 h-px bg-slate-200" />
+                      <span className="text-xs text-slate-500">
+                        {dateTasks.length} tarefa{dateTasks.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Grid de cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                      {dateTasks.map((task) => {
                       const config = statusConfig[task.status];
                       return (
                              <Card
@@ -637,7 +726,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                         </Card>
                       );
                     })}
-                </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ))}
           </div>

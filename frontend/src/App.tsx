@@ -96,6 +96,7 @@ const TaskApp: React.FC = () => {
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [fadingCards, setFadingCards] = useState<Set<number>>(new Set());
+  const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
 
   // Relógio que atualiza a cada minuto para verificar horários limite
   const [currentTime, setCurrentTime] = useState(() => {
@@ -166,6 +167,36 @@ const TaskApp: React.FC = () => {
   const activeTasks = tasks.filter(
     (t) => !isTerminalStatus(t.status) || fadingCards.has(t.id),
   );
+
+  // Filtrar tarefas por usuário (se gestor e filtro selecionado)
+  const filteredActiveTasks = isManager && selectedUserId !== 'all'
+    ? activeTasks.filter(t => t.assignedToId === parseInt(selectedUserId))
+    : activeTasks;
+
+  // Agrupar por usuário (se gestor)
+  let groupedTasks: Array<{ userLabel: string; userId: string | null; tasks: Task[] }> = [];
+
+  if (isManager) {
+    // Agrupar primeiro por usuário
+    const groupedByUser: Record<string, Task[]> = {};
+    for (const t of filteredActiveTasks) {
+      const userId = t.assignedToId?.toString() || 'unassigned';
+      const userName = employees.find(e => e.id === t.assignedToId)?.name || 'Sem atribuição';
+      const userKey = `${userId}|${userName}`;
+      if (!groupedByUser[userKey]) groupedByUser[userKey] = [];
+      groupedByUser[userKey].push(t);
+    }
+
+    // Converter para array e ordenar por nome do usuário
+    for (const [userKey, userTasks] of Object.entries(groupedByUser)) {
+      const [userId, userName] = userKey.split('|');
+      groupedTasks.push({ userLabel: userName, userId, tasks: userTasks });
+    }
+    groupedTasks.sort((a, b) => a.userLabel.localeCompare(b.userLabel));
+  } else {
+    // Para não-gestores, apenas lista as tarefas
+    groupedTasks.push({ userLabel: '', userId: null, tasks: filteredActiveTasks });
+  }
 
   useEffect(() => {
     if (isManager) {
@@ -514,7 +545,7 @@ const TaskApp: React.FC = () => {
         </div>
       )}
 
-      {!loading && activeTasks.length === 0 && page === 'tasks' && (
+      {!loading && filteredActiveTasks.length === 0 && page === 'tasks' && (
         <div className="container mx-auto px-4 py-16">
           <div className="flex flex-col items-center justify-center gap-4 text-center">
             <CheckCircle2 className="w-12 h-12 text-green-500/60" />
@@ -528,20 +559,65 @@ const TaskApp: React.FC = () => {
         </div>
       )}
 
-      {!loading && activeTasks.length > 0 && page === 'tasks' && (
+      {!loading && filteredActiveTasks.length > 0 && page === 'tasks' && (
         <div className="container mx-auto px-4 pt-6 pb-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-            {activeTasks.map((task) => {
-              const config = statusConfig[task.status as TaskStatus];
-              const isFlipped = flippedCard === task.id;
-              const isFading = fadingCards.has(task.id);
-              if (!config) return null;
-              return (
-                <div
-                  key={task.id}
-                  className={`relative h-full ${isFading ? 'fade-out-pulse' : ''}`}
-                  style={{ perspective: '1000px' }}
-                >
+          {/* Filtro por usuário (apenas para gestores) */}
+          {isManager && (
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-700">Filtrar por usuário:</span>
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger className="w-[250px]" style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                  }}>
+                    <SelectValue placeholder="Todos os usuários" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os usuários</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id.toString()}>
+                        {emp.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Grupos por usuário */}
+          {groupedTasks.map(({ userLabel, userId, tasks: userTasks }) => (
+            <div key={userId || 'no-user'} className={isManager ? "mb-8" : ""}>
+              {/* Separador de usuário (apenas para gestores) */}
+              {isManager && userLabel && (
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
+                    <span className="text-lg">👤</span>
+                    {userLabel}
+                  </div>
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-sm text-slate-600 font-medium">
+                    {userTasks.length} tarefa{userTasks.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+
+              {/* Grid de cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                {userTasks.map((task) => {
+                  const config = statusConfig[task.status as TaskStatus];
+                  const isFlipped = flippedCard === task.id;
+                  const isFading = fadingCards.has(task.id);
+                  if (!config) return null;
+                  return (
+                    <div
+                      key={task.id}
+                      className={`relative h-full ${isFading ? 'fade-out-pulse' : ''}`}
+                      style={{ perspective: '1000px' }}
+                    >
                   <div
                     className="relative w-full h-full"
                     style={{
@@ -939,8 +1015,10 @@ const TaskApp: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
-          </div>
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
