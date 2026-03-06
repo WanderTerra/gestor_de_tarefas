@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useButtonInteraction } from '@/hooks/useButtonInteraction';
 import { useAuth } from '@/contexts/AuthContext';
-import { overdueApi, OverdueAlert, authApi } from '@/services/api';
+import { overdueApi, OverdueAlert, authApi, taskApi } from '@/services/api';
 import { User } from '@/types/user';
 import { Task, TaskStatus } from '@/types/task';
 import {
@@ -82,12 +82,32 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
   const [showUserModal, setShowUserModal] = useState(false);
   const [overdueAlerts, setOverdueAlerts] = useState<OverdueAlert[]>([]);
   const [pendingRequests, setPendingRequests] = useState<User[]>([]);
+  const [taskStats, setTaskStats] = useState<{ active: number; completed: number; overdue: number } | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   const checkIsTerminal = isTerminalStatus
     ? (status: string) => isTerminalStatus(status as TaskStatus)
     : defaultIsTerminalStatus;
   const activeTasksCount = tasks.filter((t) => !checkIsTerminal(t.status)).length;
+
+  // Buscar contagens de tarefas para o modal do perfil (ativas, completas, atrasadas) em qualquer tela
+  useEffect(() => {
+    if (!showUserModal) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await taskApi.getAll();
+        if (cancelled) return;
+        const active = all.filter((t) => !defaultIsTerminalStatus(t.status)).length;
+        const completed = all.filter((t) => defaultIsTerminalStatus(t.status)).length;
+        const overdue = all.filter((t) => t.isOverdue).length;
+        setTaskStats({ active, completed, overdue });
+      } catch {
+        if (!cancelled) setTaskStats({ active: 0, completed: 0, overdue: 0 });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [showUserModal]);
 
   // Hooks de interação para botões
   const logoButtonInteraction = useButtonInteraction(() => onNavigate('tasks'), { 
@@ -445,7 +465,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
             </div>
           </div>
 
-          {/* Modal de informações (avatar) — nome, perfil e tarefas ativas */}
+          {/* Modal de informações (avatar) — nome, perfil e tarefas (ativas, completas, atrasadas) */}
           <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
@@ -475,18 +495,52 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
                         <span className="text-slate-600">Funcionário</span>
                       )}
                     </p>
-                    <div
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
-                      style={{
-                        background: 'rgba(226, 232, 240, 0.8)',
-                        border: '1px solid rgba(203, 213, 225, 0.8)',
-                      }}
-                    >
-                      <ClipboardCheck className="w-4 h-4 shrink-0 text-slate-600" />
-                      <span className="font-semibold text-slate-800">{activeTasksCount}</span>
-                      <span className="text-slate-600">
-                        tarefa{activeTasksCount !== 1 ? 's' : ''} ativa{activeTasksCount !== 1 ? 's' : ''}
-                      </span>
+                    <div className="space-y-2">
+                      <div
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                        style={{
+                          background: 'rgba(226, 232, 240, 0.8)',
+                          border: '1px solid rgba(203, 213, 225, 0.8)',
+                        }}
+                      >
+                        <ClipboardCheck className="w-4 h-4 shrink-0 text-slate-600" />
+                        <span className="font-semibold text-slate-800">
+                          {taskStats === null ? '…' : taskStats.active}
+                        </span>
+                        <span className="text-slate-600">
+                          tarefa{taskStats && taskStats.active !== 1 ? 's' : ''} ativa{taskStats && taskStats.active !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                        style={{
+                          background: 'rgba(226, 232, 240, 0.8)',
+                          border: '1px solid rgba(203, 213, 225, 0.8)',
+                        }}
+                      >
+                        <BadgeCheck className="w-4 h-4 shrink-0 text-slate-600" />
+                        <span className="font-semibold text-slate-800">
+                          {taskStats === null ? '…' : taskStats.completed}
+                        </span>
+                        <span className="text-slate-600">
+                          tarefa{taskStats && taskStats.completed !== 1 ? 's' : ''} concluída{taskStats && taskStats.completed !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                        style={{
+                          background: 'rgba(254, 226, 226, 0.6)',
+                          border: '1px solid rgba(252, 165, 165, 0.8)',
+                        }}
+                      >
+                        <CalendarCheck className="w-4 h-4 shrink-0 text-red-600" />
+                        <span className="font-semibold text-slate-800">
+                          {taskStats === null ? '…' : taskStats.overdue}
+                        </span>
+                        <span className="text-slate-600">
+                          tarefa{taskStats && taskStats.overdue !== 1 ? 's' : ''} atrasada{taskStats && taskStats.overdue !== 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </DialogDescription>
