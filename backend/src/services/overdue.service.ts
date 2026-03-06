@@ -220,16 +220,17 @@ export const overdueService = {
 
   /**
    * Limpa flag isOverdue de tarefas únicas que têm deadline no futuro
+   * OU deadline hoje mas horário ainda não passou
    * (corrige tarefas que foram marcadas incorretamente)
    * 
    * IMPORTANTE: Compara apenas a DATA do deadline, ignorando a hora
    */
   async clearFutureDeadlineOverdue(): Promise<number> {
     try {
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
 
       // Buscar tarefas únicas com deadline e isOverdue = true
       const tasksToCheck = await prisma.task.findMany({
@@ -239,15 +240,28 @@ export const overdueService = {
           isOverdue: true,
           status: { in: ACTIVE_STATUSES },
         },
-        select: { id: true, deadline: true },
+        select: { id: true, deadline: true, timeLimit: true },
       });
 
-      // Filtrar apenas as que têm deadline no futuro (comparando apenas a data)
+      // Filtrar apenas as que têm deadline no futuro OU deadline hoje mas horário ainda não passou
       const tasksToClear = tasksToCheck.filter((task) => {
         if (!task.deadline) return false;
         const deadlineDate = new Date(task.deadline);
         deadlineDate.setHours(0, 0, 0, 0);
-        return deadlineDate > today; // Deadline é no futuro
+        
+        // Se o deadline é no futuro, limpar
+        if (deadlineDate > today) {
+          return true;
+        }
+        
+        // Se o deadline é hoje, verificar se o horário ainda não passou
+        if (deadlineDate.getTime() === today.getTime()) {
+          if (task.timeLimit && task.timeLimit > currentTime) {
+            return true; // Horário ainda não passou, limpar
+          }
+        }
+        
+        return false;
       });
 
       if (tasksToClear.length === 0) {
@@ -264,7 +278,7 @@ export const overdueService = {
       });
 
       if (result.count > 0) {
-        console.log(`✅ ${result.count} tarefa(s) com deadline futuro tiveram flag isOverdue limpa.`);
+        console.log(`✅ ${result.count} tarefa(s) com deadline futuro ou horário não ultrapassado tiveram flag isOverdue limpa.`);
       }
 
       return result.count;
