@@ -66,8 +66,6 @@ function isValidBRDate(brDate: string): boolean {
   return date.getDate() === d && date.getMonth() === m - 1 && date.getFullYear() === y;
 }
 
-const isTerminalStatus = (s: string) => s === 'completed' || s === 'not-executed';
-
 function formatRecurringDays(days: string | null | undefined): string {
   if (!days) return '';
   const map: Record<string, string> = { dom: 'Dom', seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb' };
@@ -499,17 +497,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                               </div>
                             )}
                             <div className="flex-1" />
-                            {task.reason && mode === 'completed' && (
-                              <div className={`p-2 rounded-md text-xs ${config.bgLight} ${config.textColor}`}>
-                                <span className="font-semibold">Motivo: </span>{task.reason}
-                              </div>
-                            )}
-                            {mode === 'completed' ? (
-                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground pt-1 border-t border-border">
-                                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                                <span>{formatDateTime(task.updatedAt)}</span>
-                              </div>
-                            ) : task.deadline && (
+                            {task.deadline && (
                               <div className="text-sm text-muted-foreground pt-1 border-t border-border">
                                 Prazo: {new Date(task.deadline).toLocaleDateString('pt-BR')}
                               </div>
