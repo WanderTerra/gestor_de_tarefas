@@ -56,6 +56,8 @@ export const taskService = {
         recurringDays: data.recurringDays ? data.recurringDays.join(',') : null,
         recurringDayOfMonth: data.recurringDayOfMonth ?? null,
         timeLimit: data.timeLimit ?? null,
+        estimatedTime: data.estimatedTime, // Obrigatório
+        tutorialLink: data.tutorialLink ?? null,
         assignedToId: data.assignedToId ?? null,
       },
       include: {
@@ -100,6 +102,12 @@ export const taskService = {
         }),
         ...(data.timeLimit !== undefined && {
           timeLimit: data.timeLimit ?? null,
+        }),
+        ...(data.estimatedTime !== undefined && {
+          estimatedTime: data.estimatedTime ?? null,
+        }),
+        ...(data.tutorialLink !== undefined && {
+          tutorialLink: data.tutorialLink ?? null,
         }),
         ...(data.assignedToId !== undefined && {
           assignedToId: data.assignedToId,

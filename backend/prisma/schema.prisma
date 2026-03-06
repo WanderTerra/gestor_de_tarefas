@@ -46,6 +46,8 @@ model Task {
   recurringDays       String?   @map("recurring_days") @db.VarChar(100)
   recurringDayOfMonth Int?      @map("recurring_day_of_month") // Dia do mês para tarefas mensais (1-31)
   timeLimit           String?   @map("time_limit") @db.VarChar(5)
+  estimatedTime       Int?      @map("estimated_time") // Tempo estimado em minutos
+  tutorialLink        String?   @map("tutorial_link") @db.VarChar(500) // Link do tutorial da tarefa
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 

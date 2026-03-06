@@ -9,6 +9,8 @@ export interface AddTaskOptions {
   recurringDayOfMonth?: number;
   deadline?: string;
   timeLimit?: string;
+  estimatedTime?: number;
+  tutorialLink?: string;
   assignedToId?: number;
 }
 
@@ -72,6 +74,12 @@ export function useTasks(): UseTasksReturn {
       }
       if (options?.timeLimit) {
         payload.timeLimit = options.timeLimit;
+      }
+      if (options?.estimatedTime !== undefined) {
+        payload.estimatedTime = options.estimatedTime;
+      }
+      if (options?.tutorialLink) {
+        payload.tutorialLink = options.tutorialLink;
       }
       if (options?.assignedToId) {
         payload.assignedToId = options.assignedToId;

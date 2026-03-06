@@ -325,6 +325,8 @@ const TaskApp: React.FC = () => {
     recurringDayOfMonth?: number;
     deadline?: string;
     timeLimit?: string;
+    estimatedTime?: number;
+    tutorialLink?: string;
     assignedToId?: number;
   }) => {
     setSaving(true);
@@ -336,6 +338,8 @@ const TaskApp: React.FC = () => {
         recurringDayOfMonth: taskData.recurringDayOfMonth,
         deadline: taskData.deadline,
         timeLimit: taskData.timeLimit,
+        estimatedTime: taskData.estimatedTime,
+        tutorialLink: taskData.tutorialLink,
         assignedToId: taskData.assignedToId,
       });
     } catch (err) {

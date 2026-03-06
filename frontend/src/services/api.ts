@@ -80,6 +80,8 @@ export interface CreateTaskPayload {
   recurringDays?: string[];
   recurringDayOfMonth?: number;
   timeLimit?: string;
+  estimatedTime?: number; // Tempo estimado em minutos
+  tutorialLink?: string; // Link do tutorial
   assignedToId?: number;
 }
 
@@ -93,6 +95,8 @@ export interface UpdateTaskPayload {
   recurringDays?: string[] | null;
   recurringDayOfMonth?: number | null;
   timeLimit?: string | null;
+  estimatedTime?: number | null; // Tempo estimado em minutos
+  tutorialLink?: string | null; // Link do tutorial
   assignedToId?: number | null;
 }
 

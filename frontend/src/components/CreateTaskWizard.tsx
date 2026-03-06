@@ -18,6 +18,8 @@ interface CreateTaskWizardProps {
     recurringDayOfMonth?: number;
     deadline?: string;
     timeLimit?: string;
+    estimatedTime?: number;
+    tutorialLink?: string;
     assignedToId?: number;
   }) => Promise<void>;
   employees: User[];
@@ -25,7 +27,7 @@ interface CreateTaskWizardProps {
   saving: boolean;
 }
 
-type WizardStep = 'name' | 'type' | 'recurring-day' | 'recurring-weekdays' | 'single-date' | 'time-limit';
+type WizardStep = 'name' | 'type' | 'recurring-day' | 'recurring-weekdays' | 'single-date' | 'time-limit' | 'estimated-time' | 'tutorial-link';
 
 const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
   open,
@@ -43,6 +45,8 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [timeLimit, setTimeLimit] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState<string>('');
+  const [tutorialLink, setTutorialLink] = useState<string>('');
   const [assignToId, setAssignToId] = useState<string>('');
 
   const daysOfWeek = [
@@ -63,6 +67,8 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
     setSelectedWeekdays([]);
     setSelectedDate(null);
     setTimeLimit('');
+    setEstimatedTime('');
+    setTutorialLink('');
     setAssignToId('');
   };
 
@@ -93,6 +99,13 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
     } else if (step === 'single-date') {
       if (!selectedDate) return;
       setStep('time-limit');
+    } else if (step === 'time-limit') {
+      if (!timeLimit.trim()) return;
+      setStep('estimated-time');
+    } else if (step === 'estimated-time') {
+      setStep('tutorial-link');
+    } else if (step === 'tutorial-link') {
+      // Próximo passo seria salvar, mas isso é feito no handleSave
     }
   };
 
@@ -110,16 +123,30 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
       } else {
         setStep('single-date');
       }
+    } else if (step === 'estimated-time') {
+      setStep('time-limit');
+    } else if (step === 'tutorial-link') {
+      setStep('estimated-time');
     }
   };
 
   const handleSave = async () => {
-    if (step !== 'time-limit') return;
+    if (step !== 'tutorial-link') return;
+    
+    // Validar campos obrigatórios anteriores
     if (!timeLimit.trim()) return;
+    if (taskType === 'recurring' && selectedWeekdays.length === 0) return;
+    if (taskType === 'single' && !selectedDate) return;
+    
+    // Tempo estimado é obrigatório
+    if (!estimatedTime.trim()) return;
+    const estimatedTimeMinutes = parseInt(estimatedTime.trim(), 10);
+    if (isNaN(estimatedTimeMinutes) || estimatedTimeMinutes <= 0) return;
+
+    // Validar e limpar link do tutorial
+    const tutorialLinkValue = tutorialLink.trim() || undefined;
 
     if (taskType === 'recurring') {
-      if (selectedWeekdays.length === 0) return;
-      
       // Lógica: se for um dia só do mês, excluir domingo dos dias da semana
       let finalWeekdays = [...selectedWeekdays];
       if (recurringDayOfMonth !== null) {
@@ -133,11 +160,11 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
         recurringDays: finalWeekdays, // Array de strings
         recurringDayOfMonth: recurringDayOfMonth || undefined,
         timeLimit: timeLimit,
+        estimatedTime: estimatedTimeMinutes,
+        tutorialLink: tutorialLinkValue,
         assignedToId: assignToId ? Number(assignToId) : undefined,
       });
     } else {
-      if (!selectedDate) return;
-      
       // Converter para datetime ISO completo (backend espera datetime, não apenas data)
       const deadline = selectedDate.toISOString();
       
@@ -147,6 +174,8 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
         isRecurring: false,
         deadline,
         timeLimit: timeLimit,
+        estimatedTime: estimatedTimeMinutes,
+        tutorialLink: tutorialLinkValue,
         assignedToId: assignToId ? Number(assignToId) : undefined,
       });
     }
@@ -168,6 +197,12 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
     if (step === 'recurring-weekdays') return selectedWeekdays.length > 0;
     if (step === 'single-date') return selectedDate !== null;
     if (step === 'time-limit') return timeLimit.trim().length > 0;
+    if (step === 'estimated-time') {
+      // Tempo estimado é obrigatório
+      const minutes = estimatedTime.trim() ? parseInt(estimatedTime.trim(), 10) : 0;
+      return !isNaN(minutes) && minutes > 0;
+    }
+    if (step === 'tutorial-link') return true; // Opcional, sempre pode avançar
     return false;
   };
 
@@ -218,9 +253,6 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
       case 'type':
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Esta tarefa será recorrente ou única?
-            </p>
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
@@ -304,14 +336,11 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
       case 'recurring-weekdays':
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Quais dias da semana esta tarefa deve se repetir?
-              {recurringDayOfMonth !== null && (
-                <span className="block mt-1 text-xs text-orange-600">
-                  Nota: Domingos serão automaticamente excluídos para tarefas mensais.
-                </span>
-              )}
-            </p>
+            {recurringDayOfMonth !== null && (
+              <p className="text-xs text-orange-600 mb-2">
+                Nota: Domingos serão automaticamente excluídos para tarefas mensais.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               {daysOfWeek.map((day) => (
                 <button
@@ -438,7 +467,6 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Horário Limite *</label>
               <input
                 type="text"
                 value={timeLimit}
@@ -462,6 +490,133 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
           </div>
         );
 
+      case 'estimated-time':
+        const handleEstimatedTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          let value = e.target.value;
+          // Permitir apenas números
+          value = value.replace(/\D/g, '');
+          // Limitar a um número razoável (ex: 9999 minutos = ~166 horas)
+          if (value && parseInt(value, 10) > 9999) {
+            value = '9999';
+          }
+          setEstimatedTime(value);
+        };
+
+        const handleEstimatedTimeBlur = () => {
+          if (estimatedTime.trim()) {
+            const num = parseInt(estimatedTime.trim(), 10);
+            if (isNaN(num) || num <= 0) {
+              setEstimatedTime('');
+            } else {
+              setEstimatedTime(String(num));
+            }
+          }
+        };
+
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={estimatedTime}
+                onChange={handleEstimatedTimeChange}
+                onBlur={handleEstimatedTimeBlur}
+                autoFocus
+                placeholder="Ex: 30"
+                maxLength={4}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-lg"
+                style={{ 
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: '0.05em',
+                  fontFamily: 'monospace',
+                  background: 'rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: `
+                    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                    0 0 0 1px rgba(255, 255, 255, 0.2),
+                    0 0 10px rgba(255, 255, 255, 0.08),
+                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                  `,
+                }}
+              />
+              {estimatedTime && (
+                <p className="text-xs text-muted-foreground">
+                  {(() => {
+                    const minutes = parseInt(estimatedTime, 10);
+                    if (isNaN(minutes)) return '';
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    if (hours > 0 && mins > 0) {
+                      return `≈ ${hours}h ${mins}min`;
+                    } else if (hours > 0) {
+                      return `≈ ${hours}h`;
+                    } else {
+                      return `≈ ${minutes}min`;
+                    }
+                  })()}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'tutorial-link':
+        const handleTutorialLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          setTutorialLink(e.target.value);
+        };
+
+        const handleTutorialLinkBlur = () => {
+          const trimmed = tutorialLink.trim();
+          if (trimmed && !trimmed.match(/^https?:\/\/.+/)) {
+            // Se não começar com http:// ou https://, adicionar
+            if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+              setTutorialLink(`https://${trimmed}`);
+            }
+          }
+        };
+
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={tutorialLink}
+                onChange={handleTutorialLinkChange}
+                onBlur={handleTutorialLinkBlur}
+                autoFocus
+                placeholder="Ex: https://exemplo.com/tutorial"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: `
+                    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                    0 0 0 1px rgba(255, 255, 255, 0.2),
+                    0 0 10px rgba(255, 255, 255, 0.08),
+                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                  `,
+                }}
+              />
+              {tutorialLink && (
+                <p className="text-xs text-muted-foreground">
+                  <a 
+                    href={tutorialLink.startsWith('http') ? tutorialLink : `https://${tutorialLink}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Abrir link
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -481,6 +636,10 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
         return 'Data da Tarefa';
       case 'time-limit':
         return 'Horário Limite';
+      case 'estimated-time':
+        return 'Tempo Estimado';
+      case 'tutorial-link':
+        return 'Link do Tutorial';
       default:
         return 'Criar Nova Tarefa';
     }
@@ -500,6 +659,10 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
         return '';
       case 'time-limit':
         return 'Defina o horário limite obrigatório para execução da tarefa';
+      case 'estimated-time':
+        return 'Informe o tempo estimado para execução da tarefa (obrigatório)';
+      case 'tutorial-link':
+        return '';
       default:
         return '';
     }
@@ -525,7 +688,7 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
               Voltar
             </Button>
             <div className="flex gap-2">
-              {step === 'time-limit' ? (
+              {step === 'tutorial-link' ? (
                 <Button
                   onClick={handleSave}
                   disabled={!canProceed() || saving}

@@ -12,6 +12,8 @@ export interface Task {
   recurringDays?: string | null;
   recurringDayOfMonth?: number | null;
   timeLimit?: string | null;
+  estimatedTime?: number | null; // Tempo estimado em minutos
+  tutorialLink?: string | null; // Link do tutorial
   assignedToId?: number | null;
   assignedTo?: {
     id: number;

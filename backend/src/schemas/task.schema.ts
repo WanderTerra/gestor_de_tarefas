@@ -20,6 +20,8 @@ export const createTaskSchema = z.object({
   recurringDays: z.array(DaysOfWeek).optional(),
   recurringDayOfMonth: z.number().int().min(1).max(31).optional(),
   timeLimit: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM').optional(),
+  estimatedTime: z.number().int().positive(), // Tempo estimado em minutos (obrigatório)
+  tutorialLink: z.string().url('URL inválida').max(500).optional(), // Link do tutorial
 }).refine(
   (data) => {
     // Se status requer motivo, reason é obrigatório
@@ -51,6 +53,8 @@ export const updateTaskSchema = z.object({
   recurringDays: z.array(DaysOfWeek).nullable().optional(),
   recurringDayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
   timeLimit: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM').nullable().optional(),
+  estimatedTime: z.number().int().positive().nullable().optional(), // Tempo estimado em minutos
+  tutorialLink: z.string().url('URL inválida').max(500).nullable().optional(), // Link do tutorial
   assignedToId: z.number().int().positive().nullable().optional(),
 }).refine(
   (data) => {
