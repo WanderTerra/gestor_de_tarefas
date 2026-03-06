@@ -109,9 +109,11 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
       setLoading(true);
       setError(null);
       const data = await taskApi.getAll();
-      setTasks(data.filter((t) => !isTerminalStatus(t.status)));
+      // Mostrar TODAS as tarefas quando o modo for 'active' (Todas as tarefas)
+      // Não filtrar por status - incluir todas: pending, in-progress, waiting, completed, not-executed
+      setTasks(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar tarefas ativas');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar tarefas');
     } finally {
       setLoading(false);
     }
@@ -152,11 +154,16 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
   const tasksForSelectedUser = useMemo(() => {
     if (!selectedUser) return [];
+    // Retornar TODAS as tarefas do usuário selecionado, sem filtro de status ou data
     return tasks.filter((t) => (t.assignedToId ?? null) === selectedUser.id);
   }, [tasks, selectedUser]);
 
   const tasksFilteredByDate = useMemo(() => {
-    if (mode !== 'active' || !isValidBRDate(dateFrom) || !isValidBRDate(dateTo)) return tasksForSelectedUser;
+    // No modo 'active' (Todas as tarefas), não aplicar filtro de data - mostrar todas
+    if (mode === 'active') return tasksForSelectedUser;
+    
+    // No modo 'completed', aplicar filtro de data se as datas forem válidas
+    if (!isValidBRDate(dateFrom) || !isValidBRDate(dateTo)) return tasksForSelectedUser;
     const from = new Date(brToISO(dateFrom));
     const to = new Date(brToISO(dateTo));
     to.setHours(23, 59, 59, 999);
@@ -168,7 +175,11 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
   const groupedByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
-    const dateKey = mode === 'completed' ? (t: Task) => new Date(t.updatedAt).toLocaleDateString('pt-BR') : (t: Task) => (t.deadline ? new Date(t.deadline).toLocaleDateString('pt-BR') : new Date(t.updatedAt).toLocaleDateString('pt-BR'));
+    // No modo 'completed', agrupar por data de atualização (quando foi concluída)
+    // No modo 'active' (Todas as tarefas), agrupar por data de criação para mostrar todas as tarefas criadas
+    const dateKey = mode === 'completed' 
+      ? (t: Task) => new Date(t.updatedAt).toLocaleDateString('pt-BR')
+      : (t: Task) => new Date(t.createdAt).toLocaleDateString('pt-BR');
     for (const t of tasksFilteredByDate) {
       const key = dateKey(t);
       if (!map.has(key)) map.set(key, []);
@@ -276,7 +287,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
             {!loading && userListWithCounts.length === 0 && (
               <div className="text-center py-16">
-                <p className="text-slate-500 text-lg">Nenhum usuário com tarefas {mode === 'completed' ? 'concluídas' : 'ativas'} no período.</p>
+                <p className="text-slate-500 text-lg">Nenhum usuário com tarefas {mode === 'completed' ? 'concluídas' : ''} no período.</p>
               </div>
             )}
           </>
@@ -290,26 +301,29 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                 Voltar
               </Button>
               <h3 className="text-base font-bold text-slate-800">
-                {mode === 'completed' ? 'Tarefas concluídas' : 'Tarefas ativas'} — {selectedUser.name}
+                {mode === 'completed' ? 'Tarefas concluídas' : 'Todas as tarefas'} — {selectedUser.name}
               </h3>
             </div>
 
-            <Card className="mb-6" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                    <Filter className="w-4 h-4" />
-                    Filtro de datas
+            {/* Mostrar filtro de data apenas no modo 'completed' */}
+            {mode === 'completed' && (
+              <Card className="mb-6" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                      <Filter className="w-4 h-4" />
+                      Filtro de datas
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-slate-600">De</label>
+                      <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="dd/mm/aaaa" className="w-32" />
+                      <label className="text-sm text-slate-600">Até</label>
+                      <DatePicker value={dateTo} onChange={setDateTo} placeholder="dd/mm/aaaa" className="w-32" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-slate-600">De</label>
-                    <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="dd/mm/aaaa" className="w-32" />
-                    <label className="text-sm text-slate-600">Até</label>
-                    <DatePicker value={dateTo} onChange={setDateTo} placeholder="dd/mm/aaaa" className="w-32" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="space-y-8">
               {groupedByDate.map(([dateLabel, dateTasks]) => (
