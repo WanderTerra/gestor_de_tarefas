@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
   CalendarCheck, BadgeCheck, Users, UserPlus, FileSearch, 
-  Bell, LogOut, Shield, ClipboardCheck
+  Bell, LogOut, Shield, ClipboardCheck, List
 } from 'lucide-react';
 import { useButtonInteraction } from '@/hooks/useButtonInteraction';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests';
+type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'all-tasks' | 'authorization-requests';
 
 interface HeaderProps {
   currentPage: Page;
@@ -210,6 +210,14 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
               icon={<CalendarCheck className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
               label="Tarefas"
             />
+            {!isManager && (
+              <NavButton
+                onClick={() => onNavigate('all-tasks')}
+                isActive={currentPage === 'all-tasks'}
+                icon={<List className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
+                label="Todas"
+              />
+            )}
             <NavButton
               onClick={() => onNavigate('completed')}
               isActive={currentPage === 'completed'}
