@@ -17,7 +17,7 @@ import { User, getRoleLabel } from '@/types/user';
 
 interface CompletedTasksPageProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests') => void;
+  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
 }
 
 /** Helper para obter cor RGB do status para badges de vidro transparente (cores suaves/pastéis) */
@@ -93,7 +93,7 @@ function isValidBRDate(brDate: string): boolean {
 const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavigate }) => {
   const { isManager } = useAuth();
   
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests') => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests' | 'all-tasks') => {
     if (navPage === 'completed') {
       // Já estamos na página de concluídas
       return;

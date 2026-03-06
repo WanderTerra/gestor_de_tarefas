@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Loader2, ArrowLeft, CheckCircle2, Clock, AlertCircle, XCircle, PlayCircle,
-  Pencil, Trash2, Filter, ChevronDown,
+  Pencil, Trash2, ChevronDown,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi, UpdateTaskPayload } from '@/services/api';
@@ -32,14 +32,12 @@ const getStatusColorRGB = (status: TaskStatus): string => {
 };
 
 const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
-  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<User[]>([]);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
 
   // Carregar tarefas
