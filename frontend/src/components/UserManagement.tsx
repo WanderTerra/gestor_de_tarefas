@@ -5,11 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus, X, Pencil } from 'lucide-react';
-import { User, getRoleLabel, isManagerRole } from '@/types/user';
+import { Plus, Loader2, AlertCircle, UserPlus, X, Filter } from 'lucide-react';
+import { User, UserRole, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
-import EditUserDialog from '@/components/EditUserDialog';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -29,12 +28,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
       onBack();
     }
   };
+  const ROLES: UserRole[] = ['adm', 'backoffice', 'supervisor', 'financeiro', 'rh', 'monitor', 'ti-dev', 'marketing'];
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterName, setFilterName] = useState('');
 
   // Form state
   const [username, setUsername] = useState('');
@@ -94,20 +96,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
     }
   };
 
-  const handleUpdateUser = async (id: number, data: { name?: string; password?: string; role?: string; active?: boolean }) => {
-    try {
-      setError(null);
-      const updated = await userApi.update(id, data);
-      setUsers(prev => prev.map(u => u.id === id ? updated : u));
-      setEditUser(null);
-    } catch (err) {
-      const message = err instanceof ApiError
-        ? err.details ? err.details.map(d => d.mensagem).join(', ') : err.message
-        : 'Erro ao atualizar usuário';
-      setError(message);
-      throw err; // Re-throw para o dialog tratar
+  const filteredUsers = users.filter((u) => {
+    if (filterRole !== 'all' && u.role !== filterRole) return false;
+    const q = filterName.trim().toLowerCase();
+    if (q) {
+      if (!u.name.toLowerCase().includes(q) && !u.username.toLowerCase().includes(q)) return false;
     }
-  };
+    return true;
+  });
+
+  const hasActiveFilters = filterRole !== 'all' || filterName.trim() !== '';
 
   return (
     <div className="min-h-screen bg-background">
@@ -146,7 +144,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                   `,
                 }}
               >
-                {users.length} usuário{users.length !== 1 ? 's' : ''}
+                {filteredUsers.length}{hasActiveFilters ? ` de ${users.length}` : ''} usuário{filteredUsers.length !== 1 ? 's' : ''}
               </Badge>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
@@ -266,6 +264,77 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
             </div>
           )}
 
+          {/* Filtros: setor e nome */}
+          {!loading && (
+            <Card
+              className="mb-6"
+              style={{
+                background: '#fff',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+              }}
+            >
+              <CardContent className="pt-4 pb-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-600 shrink-0">
+                    <Filter className="w-4 h-4" />
+                    Filtros
+                  </div>
+                  <Select value={filterRole} onValueChange={setFilterRole}>
+                    <SelectTrigger
+                      className="w-full sm:w-[200px]"
+                      style={{
+                        background: '#fff',
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        color: '#000',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      }}
+                    >
+                      <SelectValue placeholder="Setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os setores</SelectItem>
+                      {ROLES.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {getRoleLabel(r)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Filtrar por nome ou usuário"
+                    value={filterName}
+                    onChange={(e) => setFilterName(e.target.value)}
+                    className="flex-1 min-w-0"
+                    style={{
+                      background: '#fff',
+                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                    }}
+                  />
+                  {hasActiveFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFilterRole('all');
+                        setFilterName('');
+                      }}
+                      style={{
+                        background: '#fff',
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        color: '#000',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      }}
+                    >
+                      Limpar filtro
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center gap-4 py-16">
@@ -277,7 +346,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
           {/* Lista de usuários */}
           {!loading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <Card 
                   key={user.id} 
                   className={`h-full flex flex-col transition-all duration-200 ${!user.active ? 'opacity-50' : ''}`}
@@ -351,66 +420,30 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                   <CardContent className="flex-1 flex flex-col space-y-3">
                     <p className="text-sm text-slate-600">@{user.username}</p>
                     <div className="flex-1" />
-                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/50">
-                      <div className="flex items-center justify-between">
-                        <Badge 
-                          variant="outline"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            backdropFilter: 'blur(12px)',
-                            WebkitBackdropFilter: 'blur(12px)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            color: user.active ? 'rgba(22, 101, 52, 0.6)' : 'rgba(71, 85, 105, 0.6)',
-                            boxShadow: `
-                              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                              inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                              inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                              0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                              0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                              0 0 8px 0 ${user.active 
-                                ? 'rgba(22, 101, 52, 0.15)' 
-                                : 'rgba(71, 85, 105, 0.15)'}
-                            `,
-                          }}
-                        >
-                          {user.active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditUser(user)}
-                          className="gap-1.5"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            backdropFilter: 'blur(12px) saturate(180%)',
-                            WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            color: 'rgba(59, 130, 246, 0.7)',
-                            boxShadow: `
-                              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                              inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                              inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                              0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                              0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                            `,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                            e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                            e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
-                          }}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          Editar
-                        </Button>
-                      </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
+                      <Badge 
+                        variant="outline"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          backdropFilter: 'blur(12px)',
+                          WebkitBackdropFilter: 'blur(12px)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: user.active ? 'rgba(22, 101, 52, 0.6)' : 'rgba(71, 85, 105, 0.6)',
+                          boxShadow: `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
+                            0 0 8px 0 ${user.active 
+                              ? 'rgba(22, 101, 52, 0.15)' 
+                              : 'rgba(71, 85, 105, 0.15)'}
+                          `,
+                        }}
+                      >
+                        {user.active ? 'Ativo' : 'Inativo'}
+                      </Badge>
                       <Button
                         variant="outline"
                         size="sm"
@@ -455,16 +488,29 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
               </p>
             </div>
           )}
+
+          {!loading && users.length > 0 && filteredUsers.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-slate-500 text-lg">
+                Nenhum usuário encontrado com os filtros aplicados.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => { setFilterRole('all'); setFilterName(''); }}
+                style={{
+                  background: '#fff',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  color: '#000',
+                }}
+              >
+                Limpar filtro
+              </Button>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Dialog de edição de usuário */}
-      <EditUserDialog
-        user={editUser}
-        open={!!editUser}
-        onOpenChange={(open) => { if (!open) setEditUser(null); }}
-        onSave={handleUpdateUser}
-      />
     </div>
   );
 };
