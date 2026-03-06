@@ -4,7 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
   Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, ChevronDown, Building2,
+=======
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
+>>>>>>> Stashed changes
+=======
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
+>>>>>>> Stashed changes
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
@@ -115,6 +123,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
   const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
   const toggleRoleCollapsed = useCallback((roleKey: string) => {
     setCollapsedRoles((prev) => {
@@ -127,6 +137,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
       return next;
     });
   }, []);
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 
   // Filtro de datas — default: hoje (formato brasileiro)
   const [dateFrom, setDateFrom] = useState(() => todayBR());
@@ -226,6 +240,15 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     }
   };
 
+  const toggleRoleCollapsed = useCallback((roleKey: string) => {
+    setCollapsedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(roleKey)) next.delete(roleKey);
+      else next.add(roleKey);
+      return next;
+    });
+  }, []);
+
   // Filtrar tarefas por usuário (se gestor e filtro selecionado)
   const filteredTasks = isManager && selectedUserId !== 'all'
     ? tasks.filter(t => t.assignedToId === parseInt(selectedUserId))
@@ -322,43 +345,25 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
           </div>
             <Badge 
               variant="outline"
+              className="font-bold"
               style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(12px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: 'rgba(22, 101, 52, 0.6)',
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                  inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                  inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                  0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                  0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                  0 0 8px 0 rgba(22, 101, 52, 0.15)
-                `,
+                background: '#fff',
+                border: '2px solid rgb(34, 197, 94)',
+                color: 'rgb(22, 101, 52)',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
               }}
             >
               {tasks.length} tarefa{tasks.length !== 1 ? 's' : ''} concluída{tasks.length !== 1 ? 's' : ''}
             </Badge>
         </div>
 
-        {/* Filtro de datas - Liquid Glass */}
+        {/* Filtro de datas */}
         <Card 
           className="mb-6"
           style={{
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: `
-              inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-              0 0 0 1px rgba(255, 255, 255, 0.2),
-              0 0 15px rgba(255, 255, 255, 0.1),
-              0 4px 16px 0 rgba(0, 0, 0, 0.08),
-              0 1px 4px 0 rgba(0, 0, 0, 0.04),
-              inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-            `,
+            background: '#fff',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
           }}
         >
           <CardHeader className="pb-3">
@@ -376,10 +381,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                   <label className="text-sm font-medium whitespace-nowrap text-slate-700 min-w-[60px]">Usuário:</label>
                   <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                     <SelectTrigger className="flex-1 max-w-[300px]" style={{
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      background: '#fff',
+                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                      color: '#000',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                     }}>
                       <SelectValue placeholder="Todos os usuários" />
                     </SelectTrigger>
@@ -414,16 +419,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                       maxLength={10}
                       className="pl-10"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.4)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 10px rgba(255, 255, 255, 0.08),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                        `,
+                        background: '#fff',
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                       }}
                     />
                   </div>
@@ -445,16 +443,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                       maxLength={10}
                       className="pl-10"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.4)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        boxShadow: `
-                          inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                          0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 0 10px rgba(255, 255, 255, 0.08),
-                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                        `,
+                        background: '#fff',
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                       }}
                     />
                   </div>
@@ -466,16 +457,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                     onClick={handleToday}
                     className="whitespace-nowrap"
                     style={{
-                      background: 'rgba(255, 255, 255, 0.3)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      boxShadow: `
-                        inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                        0 0 0 1px rgba(255, 255, 255, 0.2),
-                        0 0 10px rgba(255, 255, 255, 0.08),
-                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                      `,
+                      background: '#fff',
+                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                      color: '#000',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                     }}
                   >
                     Hoje
@@ -486,25 +471,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                     className="whitespace-nowrap gap-2"
                     disabled={loading}
                     style={{
-                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(34, 197, 94, 0.3)',
-                      color: 'rgba(22, 101, 52, 0.8)',
-                      boxShadow: `
-                        inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                        0 0 0 1px rgba(34, 197, 94, 0.2),
-                        0 0 10px rgba(34, 197, 94, 0.1),
-                        inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
-                      `,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(16, 185, 129, 0.25) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(34, 197, 94, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                      background: 'rgba(34, 197, 94, 0.15)',
+                      border: '2px solid rgb(34, 197, 94)',
+                      color: 'rgb(22, 101, 52)',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                     }}
                   >
                     {loading ? (
@@ -557,7 +527,13 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
               const roleKey = role || 'no-role';
               const isRoleCollapsed = isManager && roleLabel && collapsedRoles.has(roleKey);
               const taskCount = users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0);
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
               
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
               return (
               <div key={roleKey} className="mb-10">
                 {/* Setor — clique para expandir/recolher (apenas gestores) */}
@@ -589,12 +565,15 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                     {/* Separador de usuário (apenas para gestores) */}
                     {isManager && userLabel && (
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-base font-semibold text-slate-700">
-                          <UserIcon className="w-4 h-4" />
-                          {userLabel}
+                        <div className="flex items-center gap-2 shrink-0 w-10 h-10 rounded-full border border-slate-200/80 bg-slate-50 items-center justify-center">
+                          <UserIcon className="w-5 h-5 text-slate-600" />
                         </div>
-                        <div className="flex-1 h-px bg-slate-200" />
-                        <span className="text-sm text-slate-600 font-medium">
+                        <div className="flex-1 h-px bg-slate-200 min-w-0" />
+                        <span className="px-4 py-1.5 shrink-0 text-base font-bold text-black bg-slate-100/80 rounded-md border border-slate-200/80">
+                          {userLabel}
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200 min-w-0" />
+                        <span className="text-sm text-slate-600 font-medium shrink-0">
                           {dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0)} tarefa{dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0) !== 1 ? 's' : ''}
                         </span>
                       </div>
@@ -624,18 +603,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                key={task.id}
                                className="h-full flex flex-col transition-all duration-200 group backface-hidden overflow-hidden"
                                style={{
-                                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
-                                 backdropFilter: 'blur(20px) saturate(180%)',
-                                 WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                                 border: '1px solid rgba(255, 255, 255, 0.3)',
-                                 boxShadow: `
-                                   inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                   0 0 0 1px rgba(255, 255, 255, 0.2),
-                                   0 0 15px rgba(255, 255, 255, 0.1),
-                                   0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                                   0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                                   inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                                 `,
+                                 background: '#fff',
+                                 border: '1px solid rgba(0, 0, 0, 0.1)',
+                                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                }}
                                onMouseEnter={() => {
                                  setHoveredCardId(task.id);
@@ -649,21 +619,12 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                             <div className="absolute top-0 left-6 z-10">
                               <Badge 
                                 variant="outline"
+                                className="text-sm font-bold shrink-0"
                                 style={{
-                                  background: 'rgba(255, 255, 255, 0.1)',
-                                  backdropFilter: 'blur(12px) saturate(180%)',
-                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                                  color: `rgba(${getStatusColorRGB(task.status)}, 0.6)`,
-                                  boxShadow: `
-                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                    0 0 8px 0 rgba(${getStatusColorRGB(task.status)}, 0.15)
-                                  `,
+                                  background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`,
+                                  border: `2px solid rgb(${getStatusColorRGB(task.status)})`,
+                                  color: `rgb(${getStatusColorRGB(task.status)})`,
+                                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
                                 }}
                               >
                                 {config.label}
@@ -682,22 +643,9 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                     setEditTask(task);
                                   }}
                                   style={{
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    backdropFilter: 'blur(8px)',
-                                    WebkitBackdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                                    boxShadow: `
-                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
-                                    `,
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                    background: '#fff',
+                                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                   }}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
@@ -711,25 +659,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                     setDeleteConfirm(task);
                                   }}
                                   style={{
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    backdropFilter: 'blur(8px)',
-                                    WebkitBackdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                                    color: 'rgba(239, 68, 68, 0.7)',
-                                    boxShadow: `
-                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
-                                    `,
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = 'rgba(239, 68, 68, 0.9)';
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = 'rgba(239, 68, 68, 0.7)';
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                    background: '#fff',
+                                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                                    color: 'rgb(239, 68, 68)',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                   }}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
@@ -757,20 +690,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                 variant="secondary" 
                                 className="text-xs"
                                 style={{
-                                  background: 'rgba(255, 255, 255, 0.1)',
-                                  backdropFilter: 'blur(12px) saturate(180%)',
-                                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                                  color: 'rgba(71, 85, 105, 0.6)',
-                                  boxShadow: `
-                                    inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                    inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                    inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                    0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                    0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                    0 0 8px 0 rgba(71, 85, 105, 0.15)
-                                  `,
+                                  background: '#fff',
+                                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                                  color: '#000',
+                                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                 }}
                               >
                                 <UserIcon className="w-3 h-3 shrink-0 inline mr-1 align-middle" />
@@ -786,20 +709,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                         variant="secondary" 
                                         className="text-xs gap-1"
                                         style={{
-                                          background: 'rgba(255, 255, 255, 0.1)',
-                                          backdropFilter: 'blur(12px) saturate(180%)',
-                                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                                          color: 'rgba(109, 40, 217, 0.6)',
-                                          boxShadow: `
-                                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                            0 0 8px 0 rgba(109, 40, 217, 0.15)
-                                          `,
+                                          background: '#fff',
+                                          border: '1px solid rgba(0, 0, 0, 0.1)',
+                                          color: '#000',
+                                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                         }}
                                       >
                                         <Repeat className="w-3 h-3 shrink-0 inline mr-1 align-middle" />
@@ -811,20 +724,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                                         variant="secondary" 
                                         className="text-xs gap-1"
                                         style={{
-                                          background: 'rgba(255, 255, 255, 0.1)',
-                                          backdropFilter: 'blur(12px) saturate(180%)',
-                                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                                          color: 'rgba(37, 99, 235, 0.6)',
-                                          boxShadow: `
-                                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                                            0 0 8px 0 rgba(37, 99, 235, 0.15)
-                                          `,
+                                          background: '#fff',
+                                          border: '1px solid rgba(0, 0, 0, 0.1)',
+                                          color: '#000',
+                                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
                                         }}
                                       >
                                         <Clock className="w-3 h-3" />
@@ -846,8 +749,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                             </div>
 
                             {/* Data de conclusão */}
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1 border-t border-border">
-                              <CheckCircle2 className="w-3 h-3 text-green-500" />
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground pt-1 border-t border-border">
+                              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
                               <span>{formatDateTime(task.updatedAt)}</span>
                             </div>
                           </CardContent>
