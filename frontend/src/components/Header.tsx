@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { 
   CalendarCheck, BadgeCheck, Users, UserPlus, FileSearch, 
-  Bell, LogOut, Shield, ClipboardCheck, List
+  Bell, LogOut, Shield, ClipboardCheck, List, X
 } from 'lucide-react';
 import { useButtonInteraction } from '@/hooks/useButtonInteraction';
 import { useAuth } from '@/contexts/AuthContext';
@@ -131,23 +131,38 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
   });
 
   // Carregar alertas e solicitações
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const alerts = await overdueApi.getActive();
-        setOverdueAlerts(Array.isArray(alerts) ? alerts : []);
-        if (isManager) {
-          const requests = await authApi.getPendingRequests();
-          setPendingRequests(Array.isArray(requests) ? requests : []);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados do header:', error);
-        setOverdueAlerts([]);
-        setPendingRequests([]);
+  const loadData = useCallback(async () => {
+    try {
+      const alerts = await overdueApi.getActive();
+      setOverdueAlerts(Array.isArray(alerts) ? alerts : []);
+      if (isManager) {
+        const requests = await authApi.getPendingRequests();
+        setPendingRequests(Array.isArray(requests) ? requests : []);
       }
-    };
-    loadData();
+    } catch (error) {
+      console.error('Erro ao carregar dados do header:', error);
+      setOverdueAlerts([]);
+      setPendingRequests([]);
+    }
   }, [isManager]);
+
+  useEffect(() => {
+    loadData();
+    // Recarregar a cada 30 segundos para manter atualizado
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  // Recarregar alertas quando tarefas mudam (especialmente quando são concluídas)
+  useEffect(() => {
+    if (_tasks && _tasks.length > 0) {
+      // Aguardar um pouco para garantir que o backend processou a mudança
+      const timeout = setTimeout(() => {
+        loadData();
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [_tasks?.length, _tasks?.map(t => `${t.id}-${t.status}`).join(',')]);
 
   // Fechar notificações ao clicar fora
   useEffect(() => {
@@ -266,18 +281,17 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
 
           {/* ── Lado direito: Contador + Notificações + Perfil + Sair ── */}
           <div className="flex items-center justify-end gap-4 min-w-0">
-            {/* Notification bell */}
-            {((overdueAlerts?.length ?? 0) > 0 || (isManager && (pendingRequests?.length ?? 0) > 0)) && (
-              <div className="relative" ref={notifRef}>
-                <button
-                  {...notificationButtonInteraction}
-                  className="relative p-1.5 rounded-lg transition-all duration-200"
-                  title="Notificações"
-                  style={{
-                    background: 'transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+            {/* Notification bell - sempre visível */}
+            <div className="relative" ref={notifRef}>
+              <button
+                {...notificationButtonInteraction}
+                className="relative p-1.5 rounded-lg transition-all duration-200"
+                title="Notificações"
+                style={{
+                  background: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
                     e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
                   }}
                   onMouseLeave={(e) => {
@@ -285,16 +299,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
                     e.currentTarget.style.border = 'none';
                   }}
                 >
-                  <Bell className="w-5 h-5 animate-pulse" style={{ color: 'rgba(0, 0, 0, 0.7)' }} />
-                  <span 
-                    className="absolute -top-0.5 -right-0.5 flex min-w-[18px] h-[18px] items-center justify-center rounded-full text-[10px] font-bold text-white px-1"
-                    style={{
-                      background: 'rgba(220, 38, 38, 0.9)',
-                      boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.6), 0 2px 4px 0 rgba(0, 0, 0, 0.2)',
-                    }}
-                  >
-                    {(overdueAlerts?.length ?? 0) + (isManager ? (pendingRequests?.length ?? 0) : 0)}
-                  </span>
+                  <Bell className="w-5 h-5" style={{ color: 'rgba(0, 0, 0, 0.7)' }} />
                 </button>
 
                 {/* Dropdown de notificações */}
@@ -379,34 +384,103 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
                               Tarefas Atrasadas
                             </h3>
                           </div>
-                          <p className="text-[11px] mt-1" style={{ color: 'rgba(239, 68, 68, 0.75)' }}>
-                            {overdueAlerts?.length ?? 0} tarefa{(overdueAlerts?.length ?? 0) !== 1 ? 's' : ''} atrasada{(overdueAlerts?.length ?? 0) !== 1 ? 's' : ''}
-                          </p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-[11px]" style={{ color: 'rgba(239, 68, 68, 0.75)' }}>
+                              {overdueAlerts?.length ?? 0} tarefa{(overdueAlerts?.length ?? 0) !== 1 ? 's' : ''} atrasada{(overdueAlerts?.length ?? 0) !== 1 ? 's' : ''}
+                            </p>
+                            {(overdueAlerts?.length ?? 0) > 0 && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await overdueApi.acknowledgeAll();
+                                    loadData();
+                                  } catch (error) {
+                                    console.error('Erro ao dispensar todas as notificações:', error);
+                                  }
+                                }}
+                                className="text-[10px] px-2 py-0.5 rounded hover:bg-red-100 transition-colors"
+                                style={{ color: 'rgba(239, 68, 68, 0.8)' }}
+                                title="Dispensar todas"
+                              >
+                                Dispensar todas
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="max-h-40 overflow-y-auto">
                           {(overdueAlerts ?? []).slice(0, 5).map((alert) => (
                             <div 
                               key={alert.id} 
-                              className="px-4 py-2.5 transition-colors"
+                              className="px-4 py-2.5 transition-colors group relative"
                               style={{
                                 borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                              onClick={async () => {
+                                // Navegar para a página de tarefas
+                                onNavigate('tasks');
+                                // Fechar o dropdown
+                                setShowNotifications(false);
+                                // Dispensar o alerta
+                                try {
+                                  await overdueApi.acknowledge(alert.id);
+                                  // Recarregar alertas
+                                  loadData();
+                                } catch (error) {
+                                  console.error('Erro ao dispensar alerta:', error);
+                                }
                               }}
                             >
-                              <p className="text-sm font-medium" style={{ color: 'rgba(0, 0, 0, 0.9)' }}>
-                                {alert.task.name}
-                              </p>
-                              <p className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
-                                {alert.referenceDate ? 'Pendente do dia anterior' : 'Ultrapassou horário limite'}
-                              </p>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium" style={{ color: 'rgba(0, 0, 0, 0.9)' }}>
+                                    {alert.task.name}
+                                  </p>
+                                  <p className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
+                                    {alert.referenceDate ? 'Pendente do dia anterior' : 'Ultrapassou horário limite'}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await overdueApi.acknowledge(alert.id);
+                                      loadData();
+                                    } catch (error) {
+                                      console.error('Erro ao dispensar alerta:', error);
+                                    }
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100"
+                                  title="Dispensar notificação"
+                                >
+                                  <X className="w-3 h-3" style={{ color: 'rgba(239, 68, 68, 0.7)' }} />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
                       </>
                     )}
+
+                    {/* Mensagem quando não há notificações */}
+                    {(overdueAlerts?.length ?? 0) === 0 && (!isManager || (pendingRequests?.length ?? 0) === 0) && (
+                      <div className="px-4 py-8 text-center">
+                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" style={{ color: 'rgba(0, 0, 0, 0.3)' }} />
+                        <p className="text-sm" style={{ color: 'rgba(0, 0, 0, 0.5)' }}>
+                          Nenhuma notificação
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
 
             {/* Separador */}
             <div className="w-px h-8 hidden sm:block rounded-full" style={{ background: 'rgba(0, 0, 0, 0.12)' }} />

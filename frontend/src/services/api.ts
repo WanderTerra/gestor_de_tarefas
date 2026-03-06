@@ -376,6 +376,15 @@ export const overdueApi = {
     });
     return handleResponse<void>(response);
   },
+
+  /** Dispensar um alerta específico */
+  async acknowledge(id: number): Promise<void> {
+    const response = await fetch(`${API_URL}/overdue/${id}/acknowledge`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    return handleResponse<void>(response);
+  },
 };
 
 // ─── Audit API (gestor) ─────────────────────────────────────────────
