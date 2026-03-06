@@ -35,6 +35,7 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
   const [reason, setReason] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [recurringDayOfMonth, setRecurringDayOfMonth] = useState<number | null>(null);
   const [timeLimit, setTimeLimit] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [assignedToId, setAssignedToId] = useState<string>('');
@@ -48,6 +49,7 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
       setReason(task.reason || '');
       setIsRecurring(task.isRecurring);
       setSelectedDays(task.recurringDays ? task.recurringDays.split(',') : []);
+      setRecurringDayOfMonth(task.recurringDayOfMonth ?? null);
       setTimeLimit(task.timeLimit || '');
       setAssignedToId(task.assignedToId ? String(task.assignedToId) : '');
       
@@ -86,6 +88,7 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
         reason: requiresReason ? reason : null,
         isRecurring,
         recurringDays: isRecurring ? selectedDays : null,
+        recurringDayOfMonth: isRecurring ? recurringDayOfMonth : null,
         timeLimit: timeLimit || null,
         deadline: !isRecurring && deadline ? deadline.toISOString() : null,
         assignedToId: assignedToId ? Number(assignedToId) : null,
@@ -217,25 +220,61 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
           </div>
 
           {isRecurring && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Dias da Semana</label>
-              <div className="grid grid-cols-7 gap-2">
-                {daysOfWeek.map((day) => (
+            <>
+              {/* Dia do Mês (para tarefas mensais) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Dia do Mês (opcional)</label>
+                <p className="text-xs text-muted-foreground">
+                  Selecione um dia do mês para que a tarefa seja executada apenas uma vez por mês neste dia.
+                </p>
+                <SimpleCalendar
+                  selectedDate={recurringDayOfMonth ? (() => {
+                    const now = new Date();
+                    return new Date(now.getFullYear(), now.getMonth(), recurringDayOfMonth);
+                  })() : null}
+                  onDateSelect={(date) => {
+                    const dayOfMonth = date.getDate();
+                    setRecurringDayOfMonth(dayOfMonth);
+                  }}
+                  dayOfMonthMode={true}
+                />
+                {recurringDayOfMonth !== null && (
                   <button
-                    key={day.id}
                     type="button"
-                    onClick={() => toggleDay(day.id)}
-                    className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      selectedDays.includes(day.id)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
+                    onClick={() => setRecurringDayOfMonth(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
                   >
-                    {day.label}
+                    Remover dia do mês
                   </button>
-                ))}
+                )}
               </div>
-            </div>
+
+              {/* Dias da Semana */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Dias da Semana</label>
+                {recurringDayOfMonth !== null && (
+                  <p className="text-xs text-orange-600">
+                    Nota: Domingos serão automaticamente excluídos para tarefas mensais.
+                  </p>
+                )}
+                <div className="grid grid-cols-7 gap-2">
+                  {daysOfWeek.map((day) => (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => toggleDay(day.id)}
+                      className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        selectedDays.includes(day.id)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           {/* Deadline (apenas para tarefas únicas) */}

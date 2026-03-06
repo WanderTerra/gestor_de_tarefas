@@ -54,6 +54,7 @@ export const taskService = {
         deadline: data.deadline ? new Date(data.deadline) : null,
         isRecurring: data.isRecurring ?? false,
         recurringDays: data.recurringDays ? data.recurringDays.join(',') : null,
+        recurringDayOfMonth: data.recurringDayOfMonth ?? null,
         timeLimit: data.timeLimit ?? null,
         assignedToId: data.assignedToId ?? null,
       },
@@ -93,6 +94,9 @@ export const taskService = {
         ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
         ...(data.recurringDays !== undefined && {
           recurringDays: data.recurringDays ? data.recurringDays.join(',') : null,
+        }),
+        ...(data.recurringDayOfMonth !== undefined && {
+          recurringDayOfMonth: data.recurringDayOfMonth ?? null,
         }),
         ...(data.timeLimit !== undefined && {
           timeLimit: data.timeLimit ?? null,

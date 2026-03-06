@@ -10,6 +10,7 @@ export interface Task {
   isOverdue: boolean;
   isRecurring: boolean;
   recurringDays?: string | null;
+  recurringDayOfMonth?: number | null;
   timeLimit?: string | null;
   assignedToId?: number | null;
   assignedTo?: {

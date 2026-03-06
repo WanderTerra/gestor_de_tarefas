@@ -332,6 +332,7 @@ const TaskApp: React.FC = () => {
         description: taskData.description,
         isRecurring: taskData.isRecurring,
         recurringDays: taskData.recurringDays,
+        recurringDayOfMonth: taskData.recurringDayOfMonth,
         deadline: taskData.deadline,
         timeLimit: taskData.timeLimit,
         assignedToId: taskData.assignedToId,

@@ -18,6 +18,7 @@ export const createTaskSchema = z.object({
   deadline: z.string().datetime().optional(),
   isRecurring: z.boolean().default(false),
   recurringDays: z.array(DaysOfWeek).optional(),
+  recurringDayOfMonth: z.number().int().min(1).max(31).optional(),
   timeLimit: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM').optional(),
 }).refine(
   (data) => {
@@ -48,6 +49,7 @@ export const updateTaskSchema = z.object({
   deadline: z.string().datetime().nullable().optional(),
   isRecurring: z.boolean().optional(),
   recurringDays: z.array(DaysOfWeek).nullable().optional(),
+  recurringDayOfMonth: z.number().int().min(1).max(31).nullable().optional(),
   timeLimit: z.string().regex(/^\d{2}:\d{2}$/, 'Formato HH:MM').nullable().optional(),
   assignedToId: z.number().int().positive().nullable().optional(),
 }).refine(

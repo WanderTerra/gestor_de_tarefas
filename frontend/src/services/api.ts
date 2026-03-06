@@ -78,6 +78,7 @@ export interface CreateTaskPayload {
   deadline?: string;
   isRecurring?: boolean;
   recurringDays?: string[];
+  recurringDayOfMonth?: number;
   timeLimit?: string;
   assignedToId?: number;
 }
@@ -90,6 +91,7 @@ export interface UpdateTaskPayload {
   deadline?: string | null;
   isRecurring?: boolean;
   recurringDays?: string[] | null;
+  recurringDayOfMonth?: number | null;
   timeLimit?: string | null;
   assignedToId?: number | null;
 }

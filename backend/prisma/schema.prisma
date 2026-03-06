@@ -8,49 +8,50 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique @db.VarChar(50)
-  password  String   @db.VarChar(255)
-  name      String   @db.VarChar(100)
-  role      String   @default("backoffice") @db.VarChar(20) // "adm" | "backoffice" | "supervisor" | "financeiro" | "rh" | "monitor"
-  active    Boolean  @default(true)
+  id                  Int       @id @default(autoincrement())
+  username            String    @unique @db.VarChar(50)
+  password            String    @db.VarChar(255)
+  name                String    @db.VarChar(100)
+  role                String    @default("backoffice") @db.VarChar(20) // "adm" | "backoffice" | "supervisor" | "financeiro" | "rh" | "monitor"
+  active              Boolean   @default(true)
   // Campos de autorização
-  authorizationStatus String   @default("pending") @db.VarChar(20) // "pending" | "approved" | "rejected"
-  requestedAt         DateTime @default(now()) @map("requested_at")
+  authorizationStatus String    @default("pending") @db.VarChar(20) // "pending" | "approved" | "rejected"
+  requestedAt         DateTime  @default(now()) @map("requested_at")
   approvedAt          DateTime? @map("approved_at")
-  approvedById         Int?     @map("approved_by_id")
-  approvedBy           User?    @relation("UserApprovals", fields: [approvedById], references: [id])
-  rejectedAt           DateTime? @map("rejected_at")
-  rejectionReason      String?   @db.VarChar(500) @map("rejection_reason")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  approvedById        Int?      @map("approved_by_id")
+  approvedBy          User?     @relation("UserApprovals", fields: [approvedById], references: [id])
+  rejectedAt          DateTime? @map("rejected_at")
+  rejectionReason     String?   @map("rejection_reason") @db.VarChar(500)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   // Relações
-  tasks          Task[]          @relation("AssignedTasks")
-  auditLogs      AuditLog[]
-  overdueAlerts  OverdueAlert[]
-  approvedUsers  User[]          @relation("UserApprovals") // Usuários aprovados por este gestor
+  tasks         Task[]         @relation("AssignedTasks")
+  auditLogs     AuditLog[]
+  overdueAlerts OverdueAlert[]
+  approvedUsers User[]         @relation("UserApprovals") // Usuários aprovados por este gestor
 
   @@map("users")
 }
 
 model Task {
-  id            Int       @id @default(autoincrement())
-  name          String    @db.VarChar(255)
-  description   String?   @db.VarChar(1000)
-  status        String    @default("pending") @db.VarChar(20)
-  reason        String?   @db.VarChar(500)
-  deadline      DateTime?
-  isOverdue     Boolean   @default(false) @map("is_overdue")
-  isRecurring   Boolean   @default(false) @map("is_recurring")
-  recurringDays String?   @db.VarChar(100) @map("recurring_days")
-  timeLimit     String?   @db.VarChar(5) @map("time_limit")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                  Int       @id @default(autoincrement())
+  name                String    @db.VarChar(255)
+  description         String?   @db.VarChar(1000)
+  status              String    @default("pending") @db.VarChar(20)
+  reason              String?   @db.VarChar(500)
+  deadline            DateTime?
+  isOverdue           Boolean   @default(false) @map("is_overdue")
+  isRecurring         Boolean   @default(false) @map("is_recurring")
+  recurringDays       String?   @map("recurring_days") @db.VarChar(100)
+  recurringDayOfMonth Int?      @map("recurring_day_of_month") // Dia do mês para tarefas mensais (1-31)
+  timeLimit           String?   @map("time_limit") @db.VarChar(5)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   // Atribuição a um funcionário
-  assignedToId  Int?      @map("assigned_to_id")
-  assignedTo    User?     @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  assignedToId Int?  @map("assigned_to_id")
+  assignedTo   User? @relation("AssignedTasks", fields: [assignedToId], references: [id])
 
   // Relação com alertas
   overdueAlerts OverdueAlert[]
@@ -70,7 +71,7 @@ model AuditLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relação
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([entity, entityId])
@@ -79,20 +80,20 @@ model AuditLog {
 }
 
 model OverdueAlert {
-  id            Int       @id @default(autoincrement())
-  taskId        Int       @map("task_id")
-  userId        Int?      @map("user_id")           // funcionário responsável (null = sem responsável)
-  detectedAt    DateTime  @default(now()) @map("detected_at")  // quando foi detectada como atrasada
-  referenceDate DateTime  @map("reference_date")     // data em que deveria ter sido feita
-  acknowledgedAt DateTime? @map("acknowledged_at")   // quando o usuário dispensou o alerta
-  resolvedAt    DateTime? @map("resolved_at")        // quando a tarefa foi concluída/resolvida
-  status        String    @default("active") @db.VarChar(20)   // "active" | "acknowledged" | "resolved"
+  id             Int       @id @default(autoincrement())
+  taskId         Int       @map("task_id")
+  userId         Int?      @map("user_id") // funcionário responsável (null = sem responsável)
+  detectedAt     DateTime  @default(now()) @map("detected_at") // quando foi detectada como atrasada
+  referenceDate  DateTime  @map("reference_date") // data em que deveria ter sido feita
+  acknowledgedAt DateTime? @map("acknowledged_at") // quando o usuário dispensou o alerta
+  resolvedAt     DateTime? @map("resolved_at") // quando a tarefa foi concluída/resolvida
+  status         String    @default("active") @db.VarChar(20) // "active" | "acknowledged" | "resolved"
 
   // Relações
-  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user          User?     @relation(fields: [userId], references: [id])
+  task Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
 
-  @@unique([taskId, referenceDate])  // Impede alerta duplicado para a mesma tarefa+data
+  @@unique([taskId, referenceDate]) // Impede alerta duplicado para a mesma tarefa+data
   @@index([userId])
   @@index([status])
   @@index([detectedAt])
