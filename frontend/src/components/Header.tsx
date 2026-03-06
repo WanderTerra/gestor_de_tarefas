@@ -77,7 +77,11 @@ const NavButton: React.FC<{
 };
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
+=======
+const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks = [], isTerminalStatus: _isTerminalStatus }) => {
+>>>>>>> Stashed changes
 =======
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks = [], isTerminalStatus: _isTerminalStatus }) => {
 >>>>>>> Stashed changes
