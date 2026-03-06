@@ -166,6 +166,7 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
       });
     } else {
       // Converter para datetime ISO completo (backend espera datetime, não apenas data)
+      if (!selectedDate) return;
       const deadline = selectedDate.toISOString();
       
       await onSave({

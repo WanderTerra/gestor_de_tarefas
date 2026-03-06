@@ -66,7 +66,7 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
           <Calendar
             mode="single"
             selected={date}
-            onSelect={(selected) => {
+            onSelect={(selected: Date | undefined) => {
               if (selected) {
                 onChange(formatBRDate(selected));
                 setOpen(false);
