@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, ChevronDown, Building2,
+=======
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
+>>>>>>> Stashed changes
 =======
   Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
 >>>>>>> Stashed changes
@@ -120,6 +124,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
   const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
   const toggleRoleCollapsed = useCallback((roleKey: string) => {
     setCollapsedRoles((prev) => {
@@ -132,6 +137,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
       return next;
     });
   }, []);
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 
@@ -521,7 +528,10 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
               const isRoleCollapsed = isManager && roleLabel && collapsedRoles.has(roleKey);
               const taskCount = users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
               
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
               return (
