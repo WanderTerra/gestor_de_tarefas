@@ -12,11 +12,11 @@ import Header from '@/components/Header';
 
 interface AuthorizationRequestsPageProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
+  onNavigate?: (page: 'tasks' | 'general' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
 }
 
 const AuthorizationRequestsPage: React.FC<AuthorizationRequestsPageProps> = ({ onBack, onNavigate }) => {
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests' | 'all-tasks') => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks') => {
     if (navPage === 'authorization-requests') {
       // Já estamos na página de solicitações
       return;

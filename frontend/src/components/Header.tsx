@@ -16,7 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'all-tasks' | 'authorization-requests';
+type Page = 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests';
 
 interface HeaderProps {
   currentPage: Page;
@@ -76,7 +76,11 @@ const NavButton: React.FC<{
   );
 };
 
+<<<<<<< Updated upstream
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
+=======
+const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks = [], isTerminalStatus: _isTerminalStatus }) => {
+>>>>>>> Stashed changes
   const { logout, isManager, user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -234,11 +238,11 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               />
             )}
             <NavButton
-              onClick={() => onNavigate('completed')}
-              isActive={currentPage === 'completed'}
+              onClick={() => onNavigate('general')}
+              isActive={currentPage === 'general'}
               accentColor="linear-gradient(135deg, #059669 0%, #047857 100%)"
               icon={<BadgeCheck className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
-              label="Concluídas"
+              label="Geral"
             />
             {isManager && (
               <>

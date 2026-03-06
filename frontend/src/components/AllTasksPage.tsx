@@ -16,7 +16,7 @@ import { User } from '@/types/user';
 
 interface AllTasksPageProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
+  onNavigate?: (page: 'tasks' | 'general' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
 }
 
 /** Helper para obter cor RGB do status para badges */
@@ -123,7 +123,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
     }
   };
 
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests' | 'all-tasks') => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks') => {
     if (navPage === 'all-tasks') {
       return; // Já estamos na página todas
     }
@@ -132,7 +132,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
     }
   };
 
-  const getCurrentPage = (): 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests' | 'all-tasks' => {
+  const getCurrentPage = (): 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks' => {
     return 'all-tasks';
   };
 

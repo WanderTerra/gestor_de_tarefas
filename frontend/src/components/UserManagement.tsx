@@ -12,12 +12,12 @@ import Header from '@/components/Header';
 
 interface UserManagementProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
+  onNavigate?: (page: 'tasks' | 'general' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) => {
 
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests' | 'all-tasks') => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks') => {
     if (navPage === 'users') {
       // Já estamos na página de usuários
       return;

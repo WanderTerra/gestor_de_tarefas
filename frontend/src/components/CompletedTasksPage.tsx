@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
 } from 'lucide-react';
@@ -17,7 +17,7 @@ import { User, getRoleLabel } from '@/types/user';
 
 interface CompletedTasksPageProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'completed' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
+  onNavigate?: (page: 'tasks' | 'general' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
 }
 
 /** Helper para obter cor RGB do status para badges de vidro transparente (cores suaves/pastéis) */
@@ -57,21 +57,6 @@ function brToISO(brDate: string): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Aplica máscara de data brasileira (dd/mm/aaaa) */
-function applyDateMask(value: string): string {
-  // Remove tudo que não é número
-  const numbers = value.replace(/\D/g, '');
-  
-  // Aplica a máscara
-  if (numbers.length <= 2) {
-    return numbers;
-  } else if (numbers.length <= 4) {
-    return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
-  } else {
-    return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4, 8)}`;
-  }
-}
-
 /** Valida data brasileira (dd/mm/aaaa) */
 function isValidBRDate(brDate: string): boolean {
   const parts = brDate.split('/');
@@ -93,9 +78,8 @@ function isValidBRDate(brDate: string): boolean {
 const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavigate }) => {
   const { isManager } = useAuth();
   
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'authorization-requests' | 'all-tasks') => {
-    if (navPage === 'completed') {
-      // Já estamos na página de concluídas
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks') => {
+    if (navPage === 'general') {
       return;
     }
     if (onNavigate) {
@@ -305,7 +289,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   return (
     <div className="min-h-screen bg-background">
       <Header
-        currentPage="completed"
+        currentPage="general"
         onNavigate={handleNavigate}
         tasks={tasks}
       />
@@ -381,51 +365,11 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
                   <label className="text-sm font-medium whitespace-nowrap min-w-[28px] text-slate-700">De</label>
-                  <div className="relative flex-1">
-                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
-                    <Input
-                      type="text"
-                      value={dateFrom}
-                      onChange={(e) => {
-                        const masked = applyDateMask(e.target.value);
-                        if (masked.length <= 10) {
-                          setDateFrom(masked);
-                        }
-                      }}
-                      placeholder="dd/mm/aaaa"
-                      maxLength={10}
-                      className="pl-10"
-                      style={{
-                        background: '#fff',
-                        border: '1px solid rgba(0, 0, 0, 0.1)',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-                      }}
-                    />
-                  </div>
+                  <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="dd/mm/aaaa" className="flex-1 min-w-0" />
                 </div>
                 <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
                   <label className="text-sm font-medium whitespace-nowrap min-w-[28px] text-slate-700">Até</label>
-                  <div className="relative flex-1">
-                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
-                    <Input
-                      type="text"
-                      value={dateTo}
-                      onChange={(e) => {
-                        const masked = applyDateMask(e.target.value);
-                        if (masked.length <= 10) {
-                          setDateTo(masked);
-                        }
-                      }}
-                      placeholder="dd/mm/aaaa"
-                      maxLength={10}
-                      className="pl-10"
-                      style={{
-                        background: '#fff',
-                        border: '1px solid rgba(0, 0, 0, 0.1)',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-                      }}
-                    />
-                  </div>
+                  <DatePicker value={dateTo} onChange={setDateTo} placeholder="dd/mm/aaaa" className="flex-1 min-w-0" />
                 </div>
                 <div className="flex gap-2">
                   <Button

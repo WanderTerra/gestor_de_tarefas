@@ -24,14 +24,14 @@ import UserManagement from '@/components/UserManagement';
 import AuditLogView from '@/components/AuditLogView';
 import EditTaskDialog from '@/components/EditTaskDialog';
 import TransferTaskDialog from '@/components/TransferTaskDialog';
-import CompletedTasksPage from '@/components/CompletedTasksPage';
+import GeneralPage from '@/components/GeneralPage';
 import AuthorizationRequestsPage from '@/components/AuthorizationRequestsPage';
 import AllTasksPage from '@/components/AllTasksPage';
 import Header from '@/components/Header';
 import CreateTaskWizard from '@/components/CreateTaskWizard';
 import type { Task } from '@/types/task';
 
-type Page = 'tasks' | 'users' | 'audit' | 'completed' | 'all-tasks' | 'register' | 'pending-approval' | 'authorization-requests';
+type Page = 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'register' | 'pending-approval' | 'authorization-requests';
 
 const App: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -422,13 +422,13 @@ const TaskApp: React.FC = () => {
   // Verificar se é administrador (role === 'adm')
   const isAdmin = user?.role === 'adm';
 
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'completed' | 'all-tasks' | 'authorization-requests') => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests') => {
     setPage(navPage);
   };
 
-  const getCurrentPage = (): 'tasks' | 'users' | 'audit' | 'completed' | 'all-tasks' | 'authorization-requests' => {
+  const getCurrentPage = (): 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests' => {
     if (page === 'tasks') return 'tasks';
-    if (page === 'completed') return 'completed';
+    if (page === 'general') return 'general';
     if (page === 'all-tasks') return 'all-tasks';
     if (page === 'users') return 'users';
     if (page === 'audit') return 'audit';
@@ -438,7 +438,7 @@ const TaskApp: React.FC = () => {
 
   if (page === 'users') return <UserManagement onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'audit') return <AuditLogView onBack={() => setPage('tasks')} onNavigate={setPage} />;
-  if (page === 'completed') return <CompletedTasksPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
+  if (page === 'general') return <GeneralPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'all-tasks') return <AllTasksPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'authorization-requests') return <AuthorizationRequestsPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
 

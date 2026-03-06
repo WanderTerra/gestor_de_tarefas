@@ -114,6 +114,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Reserva espaço da scrollbar para evitar “pulinho” ao trocar de página */
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground;
   }
