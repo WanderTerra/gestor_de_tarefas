@@ -4,15 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, ChevronDown, Building2,
-=======
   Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
->>>>>>> Stashed changes
-=======
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
->>>>>>> Stashed changes
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
@@ -123,8 +115,6 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
   const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
   const toggleRoleCollapsed = useCallback((roleKey: string) => {
     setCollapsedRoles((prev) => {
@@ -137,10 +127,6 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
       return next;
     });
   }, []);
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
   // Filtro de datas — default: hoje (formato brasileiro)
   const [dateFrom, setDateFrom] = useState(() => todayBR());
@@ -239,15 +225,6 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
       setDeleting(false);
     }
   };
-
-  const toggleRoleCollapsed = useCallback((roleKey: string) => {
-    setCollapsedRoles((prev) => {
-      const next = new Set(prev);
-      if (next.has(roleKey)) next.delete(roleKey);
-      else next.add(roleKey);
-      return next;
-    });
-  }, []);
 
   // Filtrar tarefas por usuário (se gestor e filtro selecionado)
   const filteredTasks = isManager && selectedUserId !== 'all'
@@ -527,13 +504,6 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
               const roleKey = role || 'no-role';
               const isRoleCollapsed = isManager && roleLabel && collapsedRoles.has(roleKey);
               const taskCount = users.reduce((sum, u) => sum + u.dateGroups.reduce((s, [, tasks]) => s + tasks.length, 0), 0);
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-              
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
               return (
               <div key={roleKey} className="mb-10">
                 {/* Setor — clique para expandir/recolher (apenas gestores) */}
