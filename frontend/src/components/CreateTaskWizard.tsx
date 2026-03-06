@@ -437,9 +437,6 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
 
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Defina o horário limite para execução desta tarefa
-            </p>
             <div className="space-y-2">
               <label className="text-sm font-medium">Horário Limite *</label>
               <input
