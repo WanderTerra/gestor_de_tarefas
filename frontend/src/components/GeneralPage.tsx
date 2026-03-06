@@ -223,7 +223,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                       onClick={() => setMode('active')}
                       className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                     >
-                      Tarefas ativas (presente, passado e futuro)
+                      Todas as tarefas
                     </button>
                   </div>
                   {mode === 'completed' && (

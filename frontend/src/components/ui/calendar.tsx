@@ -1,7 +1,10 @@
 import 'react-day-picker/dist/style.css';
 import * as React from 'react';
 import { DayPicker } from 'react-day-picker';
-import { ptBR } from 'date-fns/locale/pt-BR';
+import * as ptBRModule from 'date-fns/locale/pt-BR';
+
+// date-fns v3 exports locale as default in runtime
+const ptBR = (ptBRModule as any).default || ptBRModule;
 import { cn } from '@/lib/utils';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
