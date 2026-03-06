@@ -1,7 +1,7 @@
-import 'react-day-picker/style.css';
+import 'react-day-picker/dist/style.css';
 import * as React from 'react';
 import { DayPicker } from 'react-day-picker';
-import { ptBR } from 'react-day-picker/locale';
+import ptBR from 'date-fns/locale/pt-BR';
 import { cn } from '@/lib/utils';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;

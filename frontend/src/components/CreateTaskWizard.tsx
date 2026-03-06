@@ -493,7 +493,7 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
       case 'type':
         return 'Escolha se a tarefa será recorrente ou única';
       case 'recurring-day':
-        return '';
+        return 'Escolha o dia da primeira execução da tarefa';
       case 'recurring-weekdays':
         return 'Selecione os dias da semana em que a tarefa deve se repetir';
       case 'single-date':
