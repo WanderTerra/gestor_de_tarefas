@@ -85,7 +85,17 @@ export function useTasks(): UseTasksReturn {
         payload.assignedToId = options.assignedToId;
       }
       const newTask = await taskApi.create(payload);
-      setTasks(prev => [newTask, ...prev]);
+      // Adicionar a nova tarefa ao início da lista imediatamente
+      setTasks(prev => {
+        // Verificar se a tarefa já existe (evitar duplicatas)
+        const exists = prev.some(t => t.id === newTask.id);
+        if (exists) {
+          // Se já existe, atualizar ao invés de adicionar
+          return prev.map(t => t.id === newTask.id ? newTask : t);
+        }
+        // Adicionar no início da lista
+        return [newTask, ...prev];
+      });
     } catch (err) {
       const message = err instanceof ApiError
         ? err.details
