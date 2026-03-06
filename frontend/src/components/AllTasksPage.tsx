@@ -32,6 +32,7 @@ const getStatusColorRGB = (status: TaskStatus): string => {
 };
 
 const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
+  const { isManager } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<User[]>([]);
@@ -56,8 +57,10 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
     loadTasks();
   }, []);
 
-  // Carregar funcionários (para edição)
+  // Carregar funcionários (apenas para gestores, para edição)
   useEffect(() => {
+    if (!isManager) return; // Usuários comuns não têm permissão para listar usuários
+    
     const loadEmployees = async () => {
       try {
         const data = await userApi.getAll();
@@ -67,7 +70,7 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
       }
     };
     loadEmployees();
-  }, []);
+  }, [isManager]);
 
   // Agrupar tarefas por status
   const groupedByStatus = tasks.reduce((acc, task) => {
