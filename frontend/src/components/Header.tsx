@@ -76,7 +76,7 @@ const NavButton: React.FC<{
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], isTerminalStatus }) => {
+const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
   const { logout, isManager, user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -84,11 +84,6 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks = [], is
   const [pendingRequests, setPendingRequests] = useState<User[]>([]);
   const [taskStats, setTaskStats] = useState<{ active: number; completed: number; overdue: number } | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-
-  const checkIsTerminal = isTerminalStatus
-    ? (status: string) => isTerminalStatus(status as TaskStatus)
-    : defaultIsTerminalStatus;
-  const activeTasksCount = tasks.filter((t) => !checkIsTerminal(t.status)).length;
 
   // Buscar contagens de tarefas para o modal do perfil (ativas, completas, atrasadas) em qualquer tela
   useEffect(() => {
