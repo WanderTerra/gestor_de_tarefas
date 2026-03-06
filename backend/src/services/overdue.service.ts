@@ -120,7 +120,7 @@ export const overdueService = {
           timeLimit: { not: null },
           isOverdue: false,
         },
-        select: { id: true, timeLimit: true, deadline: true, isRecurring: true },
+        select: { id: true, timeLimit: true, deadline: true, isRecurring: true, recurringDayOfMonth: true },
       });
 
       const overdue = tasksWithTimeLimit.filter((t) => {
@@ -143,8 +143,23 @@ export const overdueService = {
           return true;
         }
         
-        // Para tarefas recorrentes, verificar apenas o horário
-        return t.timeLimit <= currentTime;
+        // Para tarefas recorrentes mensais (com recurringDayOfMonth)
+        if (t.isRecurring && t.recurringDayOfMonth !== null) {
+          const todayDay = today.getDate();
+          // Só considerar atrasada se hoje for o dia do mês especificado E o horário já passou
+          if (todayDay === t.recurringDayOfMonth) {
+            return t.timeLimit <= currentTime;
+          }
+          // Se não é o dia do mês, não está atrasada
+          return false;
+        }
+        
+        // Para tarefas recorrentes semanais (sem recurringDayOfMonth), verificar apenas o horário
+        if (t.isRecurring) {
+          return t.timeLimit <= currentTime;
+        }
+        
+        return false;
       });
 
       if (overdue.length === 0) return 0;
@@ -284,6 +299,68 @@ export const overdueService = {
       return result.count;
     } catch (err: any) {
       console.error('❌ Erro ao limpar flag isOverdue de tarefas com deadline futuro:', err);
+      return 0;
+    }
+  },
+
+  /**
+   * Limpa flag isOverdue de tarefas recorrentes mensais que não estão no dia correto
+   * (corrige tarefas que foram marcadas incorretamente antes da correção)
+   */
+  async clearMonthlyRecurringOverdue(): Promise<number> {
+    try {
+      const today = new Date();
+      const todayDay = today.getDate();
+      const currentTime = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+
+      // Buscar tarefas recorrentes mensais com isOverdue = true
+      const tasksToCheck = await prisma.task.findMany({
+        where: {
+          isRecurring: true,
+          recurringDayOfMonth: { not: null },
+          isOverdue: true,
+          status: { in: ACTIVE_STATUSES },
+        },
+        select: { id: true, recurringDayOfMonth: true, timeLimit: true },
+      });
+
+      // Filtrar apenas as que não estão no dia correto OU horário ainda não passou
+      const tasksToClear = tasksToCheck.filter((task) => {
+        if (task.recurringDayOfMonth === null) return false;
+        
+        // Se não é o dia do mês especificado, limpar
+        if (todayDay !== task.recurringDayOfMonth) {
+          return true;
+        }
+        
+        // Se é o dia correto mas o horário ainda não passou, limpar
+        if (task.timeLimit && task.timeLimit > currentTime) {
+          return true;
+        }
+        
+        return false;
+      });
+
+      if (tasksToClear.length === 0) {
+        return 0;
+      }
+
+      const result = await prisma.task.updateMany({
+        where: {
+          id: { in: tasksToClear.map((t) => t.id) },
+        },
+        data: {
+          isOverdue: false,
+        },
+      });
+
+      if (result.count > 0) {
+        console.log(`✅ ${result.count} tarefa(s) recorrente(s) mensal(is) tiveram flag isOverdue limpa (não está no dia correto ou horário ainda não passou).`);
+      }
+
+      return result.count;
+    } catch (err: any) {
+      console.error('❌ Erro ao limpar flag isOverdue de tarefas recorrentes mensais:', err);
       return 0;
     }
   },

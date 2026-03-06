@@ -162,10 +162,28 @@ const TaskApp: React.FC = () => {
       // Tarefa concluída nunca mostra atrasada
       if (task.status === 'completed') return false;
       
-      // Se o backend já marcou como atrasada (dia anterior), respeitar
-      if (task.isOverdue) return true;
+      // PRIORIDADE 1: Se o backend já marcou como atrasada, respeitar (mas verificar se não é mensal no dia errado)
+      if (task.isOverdue) {
+        // Se é tarefa mensal, verificar se realmente deveria estar atrasada
+        if (task.isRecurring && task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
+          const today = new Date();
+          const todayDay = today.getDate();
+          // Se não é o dia do mês, não está atrasada (mesmo que backend tenha marcado)
+          if (todayDay !== task.recurringDayOfMonth) {
+            return false;
+          }
+          // Se é o dia correto, verificar se o horário já passou
+          if (task.timeLimit) {
+            return currentTime >= task.timeLimit;
+          }
+          // Se não tem timeLimit, não está atrasada
+          return false;
+        }
+        // Para outras tarefas, respeitar a flag do backend
+        return true;
+      }
       
-      // PRIORIDADE: Se tem deadline, tratar como tarefa única (mesmo que isRecurring esteja true)
+      // PRIORIDADE 2: Se tem deadline, tratar como tarefa única (mesmo que isRecurring esteja true)
       // Isso corrige casos onde a tarefa foi criada como única mas isRecurring está incorreto
       if (task.deadline) {
         try {
@@ -202,7 +220,24 @@ const TaskApp: React.FC = () => {
         return false;
       }
       
-      // Para tarefas recorrentes (sem deadline), verificar apenas o horário limite do dia atual
+      // PRIORIDADE 3: Para tarefas recorrentes mensais (com recurringDayOfMonth)
+      // IMPORTANTE: Verificar se recurringDayOfMonth é um número válido (1-31)
+      if (task.isRecurring && 
+          task.recurringDayOfMonth !== null && 
+          task.recurringDayOfMonth !== undefined && 
+          task.recurringDayOfMonth >= 1 && 
+          task.recurringDayOfMonth <= 31) {
+        const today = new Date();
+        const todayDay = today.getDate();
+        // Só considerar atrasada se hoje for o dia do mês especificado E o horário já passou
+        if (todayDay === task.recurringDayOfMonth && task.timeLimit) {
+          return currentTime >= task.timeLimit;
+        }
+        // Se não é o dia do mês, não está atrasada
+        return false;
+      }
+      
+      // PRIORIDADE 4: Para tarefas recorrentes semanais (sem recurringDayOfMonth ou com valor inválido), verificar apenas o horário limite do dia atual
       if (task.isRecurring && task.timeLimit) {
         return currentTime >= task.timeLimit;
       }

@@ -155,9 +155,52 @@ export function useNotifications() {
 
         const previousIsOverdue = previousTasksRef.current.get(task.id) ?? false;
         
-        // Verificar se está atrasada: flag do backend OU horário limite ultrapassado
-        const currentIsOverdue = task.isOverdue || 
-          (task.timeLimit && task.timeLimit <= currentTime);
+        // Verificar se está atrasada: considerar flag do backend, mas validar tarefas mensais
+        let currentIsOverdue = false;
+        
+        // PRIORIDADE 1: Se tem deadline, tratar como tarefa única
+        if (task.deadline) {
+          try {
+            const deadlineDate = new Date(task.deadline);
+            deadlineDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (deadlineDate.getTime() === today.getTime()) {
+              // Se o deadline é hoje, verificar se o horário já passou
+              if (task.timeLimit) {
+                currentIsOverdue = task.timeLimit <= currentTime;
+              }
+            } else if (deadlineDate < today) {
+              // Se o deadline já passou, está atrasada
+              currentIsOverdue = true;
+            }
+          } catch (err) {
+            console.error('Erro ao processar deadline da tarefa:', task.id, err);
+          }
+        }
+        // PRIORIDADE 2: Para tarefas recorrentes mensais (com recurringDayOfMonth válido)
+        else if (task.isRecurring && 
+                 task.recurringDayOfMonth !== null && 
+                 task.recurringDayOfMonth !== undefined && 
+                 task.recurringDayOfMonth >= 1 && 
+                 task.recurringDayOfMonth <= 31) {
+          const today = new Date();
+          const todayDay = today.getDate();
+          // Só considerar atrasada se hoje for o dia do mês especificado E o horário já passou
+          if (todayDay === task.recurringDayOfMonth && task.timeLimit) {
+            currentIsOverdue = task.timeLimit <= currentTime;
+          }
+          // Se não é o dia do mês, não está atrasada (mesmo que backend tenha marcado)
+        }
+        // PRIORIDADE 3: Para tarefas recorrentes semanais (sem recurringDayOfMonth)
+        else if (task.isRecurring && task.timeLimit) {
+          currentIsOverdue = task.timeLimit <= currentTime;
+        }
+        // PRIORIDADE 4: Se o backend marcou como atrasada e não é tarefa mensal, respeitar
+        else if (task.isOverdue) {
+          currentIsOverdue = true;
+        }
 
         // Se a tarefa acabou de ficar atrasada (mudou de false para true)
         if (!previousIsOverdue && currentIsOverdue) {

@@ -101,6 +101,8 @@ async function start() {
               await overdueService.checkTimeLimitOverdue();
               // Limpar flag isOverdue de tarefas com deadline no futuro (corrige marcações incorretas)
               await overdueService.clearFutureDeadlineOverdue();
+              // Limpar flag isOverdue de tarefas recorrentes mensais que não estão no dia correto
+              await overdueService.clearMonthlyRecurringOverdue();
             } catch (err) {
               console.error('⚠️ Erro ao verificar tarefas atrasadas:', err);
             }
@@ -116,6 +118,8 @@ async function start() {
                 await overdueService.checkTimeLimitOverdue();
                 // Limpar flag isOverdue de tarefas com deadline no futuro (corrige marcações incorretas)
                 await overdueService.clearFutureDeadlineOverdue();
+                // Limpar flag isOverdue de tarefas recorrentes mensais que não estão no dia correto
+                await overdueService.clearMonthlyRecurringOverdue();
               } catch (err) {
                 console.error('⚠️ Erro na verificação de horário limite:', err);
               }
