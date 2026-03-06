@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Loader2, AlertCircle, CalendarDays, Clock, CheckCircle2, Filter, Repeat,
-  ArrowLeft, Eye, ClipboardList,
+  ArrowLeft, Eye, ClipboardList, Pencil, Trash2, ArrowRight,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import { User, getRoleLabel } from '@/types/user';
+import EditTaskDialog from '@/components/EditTaskDialog';
+import TransferTaskDialog from '@/components/TransferTaskDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Page = 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests';
 
@@ -38,6 +41,12 @@ function formatDateTime(iso: string): string {
 
 function todayBR(): string {
   const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+function lastWeekBR(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 7); // 7 dias atrás
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
@@ -81,8 +90,14 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const [employees, setEmployees] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateFrom, setDateFrom] = useState(() => todayBR());
+  // Por padrão, no modo 'completed' mostrar última semana, no modo 'active' não importa (não usa filtro)
+  const [dateFrom, setDateFrom] = useState(() => lastWeekBR());
   const [dateTo, setDateTo] = useState(() => todayBR());
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [transferTask, setTransferTask] = useState<Task | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
   const handleNavigate = (navPage: Page) => {
     if (navPage === 'general') return;
     onNavigate?.(navPage) ?? onBack();
@@ -122,6 +137,14 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   useEffect(() => {
     if (isManager) userApi.getAll().then(setEmployees).catch(() => {});
   }, [isManager]);
+
+  // Quando mudar para o modo 'completed', atualizar datas para última semana
+  useEffect(() => {
+    if (mode === 'completed') {
+      setDateFrom(lastWeekBR());
+      setDateTo(todayBR());
+    }
+  }, [mode]);
 
   useEffect(() => {
     if (mode === 'completed' && isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
@@ -191,6 +214,61 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const handleBackFromDetail = () => {
     setSelectedUser(null);
     setView('users');
+  };
+
+  // Função para atualizar tarefa
+  const handleUpdateTask = async (taskId: number, data: any) => {
+    try {
+      await taskApi.update(taskId, data);
+      // Recarregar tarefas após atualização
+      if (mode === 'completed' && isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
+        await fetchCompleted(dateFrom, dateTo);
+      } else if (mode === 'active') {
+        await fetchActive();
+      }
+      setEditTask(null);
+    } catch (err) {
+      console.error('Erro ao atualizar tarefa:', err);
+      throw err;
+    }
+  };
+
+  // Função para transferir tarefa
+  const handleTransfer = async (taskId: number, newUserId: number) => {
+    try {
+      await taskApi.update(taskId, { assignedToId: newUserId });
+      // Recarregar tarefas após transferência
+      if (mode === 'completed' && isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
+        await fetchCompleted(dateFrom, dateTo);
+      } else if (mode === 'active') {
+        await fetchActive();
+      }
+      setTransferTask(null);
+    } catch (err) {
+      console.error('Erro ao transferir tarefa:', err);
+      throw err;
+    }
+  };
+
+  // Função para deletar tarefa
+  const handleDeleteTask = async () => {
+    if (!deleteConfirm) return;
+    try {
+      setDeleting(true);
+      await taskApi.delete(deleteConfirm.id);
+      // Recarregar tarefas após deleção
+      if (mode === 'completed' && isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
+        await fetchCompleted(dateFrom, dateTo);
+      } else if (mode === 'active') {
+        await fetchActive();
+      }
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('Erro ao deletar tarefa:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao deletar tarefa');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -326,27 +404,80 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
             )}
 
             <div className="space-y-8">
-              {groupedByDate.map(([dateLabel, dateTasks]) => (
-                <div key={dateLabel}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-sm font-medium text-slate-600">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      {dateLabel}
-                    </div>
-                    <div className="flex-1 h-px bg-slate-200" />
-                    <span className="text-xs text-slate-500">{dateTasks.length} tarefa{dateTasks.length !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-                    {dateTasks.map((task) => {
+              {mode === 'active' ? (
+                // No modo 'active' (Todas as tarefas), exibir todas as tarefas sem agrupamento por data
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                  {tasksFilteredByDate.map((task) => {
                       const config = statusConfig[task.status];
                       return (
-                        <Card key={task.id} className="h-full flex flex-col" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
+                        <Card 
+                          key={task.id} 
+                          className="h-full flex flex-col transition-all duration-200 group" 
+                          style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}
+                          onMouseEnter={() => setHoveredCardId(task.id)}
+                          onMouseLeave={() => setHoveredCardId(null)}
+                        >
                           <CardHeader className="pb-3 relative pt-8">
                             <div className="absolute top-0 left-6 z-10">
                               <Badge variant="outline" className="text-sm font-bold shrink-0" style={{ background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`, border: `2px solid rgb(${getStatusColorRGB(task.status)})`, color: `rgb(${getStatusColorRGB(task.status)})`, boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' }}>
                                 {config.label}
                               </Badge>
                             </div>
+                            {/* Botões no canto superior direito (apenas para managers) */}
+                            {isManager && hoveredCardId === task.id && (
+                              <div className="absolute top-0 right-0 flex gap-1 z-10 transition-opacity duration-200">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-70 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditTask(task);
+                                  }}
+                                  style={{
+                                    background: '#fff',
+                                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                  }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-70 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTransferTask(task);
+                                  }}
+                                  style={{
+                                    background: '#fff',
+                                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                                    color: 'rgba(59, 130, 246, 0.7)',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                  }}
+                                >
+                                  <ArrowRight className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-70 hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirm(task);
+                                  }}
+                                  style={{
+                                    background: '#fff',
+                                    border: '1px solid rgba(0, 0, 0, 0.1)',
+                                    color: 'rgb(239, 68, 68)',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
                             <CardTitle className="text-base font-semibold line-clamp-2">{task.name}</CardTitle>
                           </CardHeader>
                           <CardContent className="flex-1 flex flex-col space-y-3">
@@ -388,11 +519,137 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                       );
                     })}
                   </div>
-                </div>
-              ))}
+              ) : (
+                // No modo 'completed' (Tarefas concluídas), manter agrupamento por data
+                groupedByDate.map(([dateLabel, dateTasks]) => (
+                  <div key={dateLabel}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-sm font-medium text-slate-600">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        {dateLabel}
+                      </div>
+                      <div className="flex-1 h-px bg-slate-200" />
+                      <span className="text-xs text-slate-500">{dateTasks.length} tarefa{dateTasks.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                      {dateTasks.map((task) => {
+                        const config = statusConfig[task.status];
+                        return (
+                          <Card 
+                            key={task.id} 
+                            className="h-full flex flex-col transition-all duration-200 group" 
+                            style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}
+                            onMouseEnter={() => setHoveredCardId(task.id)}
+                            onMouseLeave={() => setHoveredCardId(null)}
+                          >
+                            <CardHeader className="pb-3 relative pt-8">
+                              <div className="absolute top-0 left-6 z-10">
+                                <Badge variant="outline" className="text-sm font-bold shrink-0" style={{ background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`, border: `2px solid rgb(${getStatusColorRGB(task.status)})`, color: `rgb(${getStatusColorRGB(task.status)})`, boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' }}>
+                                  {config.label}
+                                </Badge>
+                              </div>
+                              {/* Botões no canto superior direito (apenas para managers) */}
+                              {isManager && hoveredCardId === task.id && (
+                                <div className="absolute top-0 right-0 flex gap-1 z-10 transition-opacity duration-200">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 opacity-70 hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditTask(task);
+                                    }}
+                                    style={{
+                                      background: '#fff',
+                                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 opacity-70 hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTransferTask(task);
+                                    }}
+                                    style={{
+                                      background: '#fff',
+                                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                                      color: 'rgba(59, 130, 246, 0.7)',
+                                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                    }}
+                                  >
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 opacity-70 hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteConfirm(task);
+                                    }}
+                                    style={{
+                                      background: '#fff',
+                                      border: '1px solid rgba(0, 0, 0, 0.1)',
+                                      color: 'rgb(239, 68, 68)',
+                                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              )}
+                              <CardTitle className="text-base font-semibold line-clamp-2">{task.name}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col space-y-3">
+                              {task.description && <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>}
+                              {(task.isRecurring || task.timeLimit) && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {task.isRecurring && task.recurringDays && (
+                                    <Badge variant="secondary" className="text-xs" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                                      <Repeat className="w-3 h-3 inline mr-1" />
+                                      {formatRecurringDays(task.recurringDays)}
+                                    </Badge>
+                                  )}
+                                  {task.timeLimit && (
+                                    <Badge variant="secondary" className="text-xs" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                                      <Clock className="w-3 h-3" />
+                                      {task.timeLimit}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                              <div className="flex-1" />
+                              {task.reason && (
+                                <div className={`p-2 rounded-md text-xs ${config.bgLight} ${config.textColor}`}>
+                                  <span className="font-semibold">Motivo: </span>{task.reason}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground pt-1 border-t border-border">
+                                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                <span>{formatDateTime(task.updatedAt)}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
-            {groupedByDate.length === 0 && (
+            {mode === 'active' && tasksFilteredByDate.length === 0 && (
+              <div className="text-center py-16">
+                <p className="text-slate-500">Nenhuma tarefa encontrada.</p>
+              </div>
+            )}
+
+            {mode === 'completed' && groupedByDate.length === 0 && (
               <div className="text-center py-16">
                 <p className="text-slate-500">Nenhuma tarefa neste período.</p>
               </div>
@@ -400,6 +657,64 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
           </>
         )}
       </div>
+
+      {/* Dialog de edição */}
+      <EditTaskDialog
+        task={editTask}
+        open={!!editTask}
+        onOpenChange={(open) => { if (!open) setEditTask(null); }}
+        onSave={handleUpdateTask}
+        employees={employees}
+      />
+
+      {/* Dialog de transferência */}
+      {isManager && (
+        <TransferTaskDialog
+          task={transferTask}
+          open={!!transferTask}
+          onOpenChange={(open) => { if (!open) setTransferTask(null); }}
+          onTransfer={handleTransfer}
+          employees={employees}
+        />
+      )}
+
+      {/* Dialog de confirmação de deleção */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja excluir a tarefa <strong>"{deleteConfirm?.name}"</strong>?
+              Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteTask}
+                className="flex-1"
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="flex-1">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
