@@ -162,7 +162,7 @@ const TaskApp: React.FC = () => {
       // Tarefa concluída nunca mostra atrasada
       if (task.status === 'completed') return false;
       
-      // PRIORIDADE 1: Se o backend já marcou como atrasada, respeitar (mas verificar se não é mensal no dia errado)
+      // PRIORIDADE 1: Se o backend já marcou como atrasada, respeitar (mas verificar se não é mensal/semanal no dia errado)
       if (task.isOverdue) {
         // Se é tarefa mensal, verificar se realmente deveria estar atrasada
         if (task.isRecurring && task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
@@ -173,12 +173,35 @@ const TaskApp: React.FC = () => {
             return false;
           }
           // Se é o dia correto, verificar se o horário já passou
-      if (task.timeLimit) {
-        return currentTime >= task.timeLimit;
-      }
+          if (task.timeLimit) {
+            return currentTime >= task.timeLimit;
+          }
           // Se não tem timeLimit, não está atrasada
           return false;
         }
+        
+        // Se é tarefa semanal, verificar se hoje é um dos dias configurados
+        if (task.isRecurring && task.recurringDays) {
+          const today = new Date();
+          const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+          const dayMap: Record<number, string> = {
+            0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
+          };
+          const todayDayName = dayMap[todayDayOfWeek];
+          const recurringDaysArray = task.recurringDays.split(',');
+          
+          // Se hoje não é um dos dias de recorrência, não está atrasada
+          if (!recurringDaysArray.includes(todayDayName)) {
+            return false;
+          }
+          
+          // Se hoje é um dia de recorrência, verificar se o horário já passou
+          if (task.timeLimit) {
+            return currentTime >= task.timeLimit;
+          }
+          return false;
+        }
+        
         // Para outras tarefas, respeitar a flag do backend
         return true;
       }
@@ -237,8 +260,23 @@ const TaskApp: React.FC = () => {
         return false;
       }
       
-      // PRIORIDADE 4: Para tarefas recorrentes semanais (sem recurringDayOfMonth ou com valor inválido), verificar apenas o horário limite do dia atual
-      if (task.isRecurring && task.timeLimit) {
+      // PRIORIDADE 4: Para tarefas recorrentes semanais (sem recurringDayOfMonth ou com valor inválido)
+      // Verificar se hoje é um dos dias da semana configurados E o horário já passou
+      if (task.isRecurring && task.timeLimit && task.recurringDays) {
+        const today = new Date();
+        const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+        const dayMap: Record<number, string> = {
+          0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
+        };
+        const todayDayName = dayMap[todayDayOfWeek];
+        const recurringDaysArray = task.recurringDays.split(',');
+        
+        // Se hoje não é um dos dias de recorrência, não está atrasada
+        if (!recurringDaysArray.includes(todayDayName)) {
+          return false;
+        }
+        
+        // Se hoje é um dia de recorrência, verificar se o horário já passou
         return currentTime >= task.timeLimit;
       }
       

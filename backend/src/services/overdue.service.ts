@@ -120,7 +120,7 @@ export const overdueService = {
           timeLimit: { not: null },
           isOverdue: false,
         },
-        select: { id: true, timeLimit: true, deadline: true, isRecurring: true, recurringDayOfMonth: true },
+        select: { id: true, timeLimit: true, deadline: true, isRecurring: true, recurringDayOfMonth: true, recurringDays: true },
       });
 
       const overdue = tasksWithTimeLimit.filter((t) => {
@@ -154,8 +154,24 @@ export const overdueService = {
           return false;
         }
         
-        // Para tarefas recorrentes semanais (sem recurringDayOfMonth), verificar apenas o horário
+        // Para tarefas recorrentes semanais (sem recurringDayOfMonth), verificar se hoje é um dos dias configurados E o horário já passou
         if (t.isRecurring) {
+          // Verificar se hoje é um dos dias da semana configurados
+          const todayDayOfWeek = now.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+          const dayMap: Record<number, string> = {
+            0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
+          };
+          const todayDayName = dayMap[todayDayOfWeek];
+          
+          // Se tem dias da semana configurados, verificar se hoje é um deles
+          if (t.recurringDays) {
+            const recurringDaysArray = t.recurringDays.split(',');
+            if (!recurringDaysArray.includes(todayDayName)) {
+              return false; // Hoje não é um dia de recorrência
+            }
+          }
+          
+          // Se hoje é um dia de recorrência, verificar se o horário já passou
           return t.timeLimit <= currentTime;
         }
         
