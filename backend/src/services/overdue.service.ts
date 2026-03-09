@@ -459,4 +459,118 @@ export const overdueService = {
 
     return { alerts, total };
   },
+
+  /**
+   * Verifica se hoje é um dia de recorrência válido para a tarefa
+   */
+  private isTodayRecurringDay(task: { recurringDays: string | null; recurringDayOfMonth: number | null }): boolean {
+    const today = new Date();
+    const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+    const todayDayOfMonth = today.getDate();
+
+    // Mapear dia da semana numérico para string
+    const dayMap: Record<number, string> = {
+      0: 'dom', // Domingo
+      1: 'seg', // Segunda
+      2: 'ter', // Terça
+      3: 'qua', // Quarta
+      4: 'qui', // Quinta
+      5: 'sex', // Sexta
+      6: 'sab', // Sábado
+    };
+    const todayDayName = dayMap[todayDayOfWeek];
+
+    // Para tarefas mensais (com recurringDayOfMonth)
+    if (task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
+      // Verificar se hoje é o dia do mês especificado
+      if (todayDayOfMonth !== task.recurringDayOfMonth) {
+        return false;
+      }
+      // Se é o dia do mês, verificar também se hoje é um dos dias da semana configurados
+      if (task.recurringDays) {
+        const recurringDaysArray = task.recurringDays.split(',');
+        return recurringDaysArray.includes(todayDayName);
+      }
+      // Se não tem recurringDays mas tem recurringDayOfMonth, considerar válido se for o dia
+      return true;
+    }
+
+    // Para tarefas semanais (sem recurringDayOfMonth)
+    if (task.recurringDays) {
+      const recurringDaysArray = task.recurringDays.split(',');
+      return recurringDaysArray.includes(todayDayName);
+    }
+
+    return false;
+  },
+
+  /**
+   * Reseta tarefas recorrentes concluídas para "pending" apenas se hoje for um dia de recorrência válido
+   * e a tarefa não foi completada hoje (verifica tabela task_completions)
+   */
+  async resetCompletedRecurringTasks(): Promise<number> {
+    try {
+      // Buscar todas as tarefas recorrentes concluídas
+      const completedRecurringTasks = await prisma.task.findMany({
+        where: {
+          isRecurring: true,
+          status: 'completed',
+        },
+        select: {
+          id: true,
+          recurringDays: true,
+          recurringDayOfMonth: true,
+        },
+      });
+
+      let resetCount = 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (const task of completedRecurringTasks) {
+        // Verificar se a tarefa foi completada hoje usando a tabela de histórico
+        // completedDate é DateTime normalizado para meia-noite, então comparamos diretamente
+        const completionToday = await prisma.taskCompletion.findFirst({
+          where: {
+            taskId: task.id,
+            completedDate: {
+              gte: today, // maior ou igual a meia-noite de hoje
+              lt: new Date(today.getTime() + 24 * 60 * 60 * 1000), // menor que meia-noite de amanhã
+            },
+          },
+        });
+
+        // Se foi completada hoje, não resetar
+        if (completionToday) {
+          continue;
+        }
+
+        // Verificar se hoje é um dia de recorrência válido para esta tarefa
+        if (this.isTodayRecurringDay(task)) {
+          await prisma.task.update({
+            where: { id: task.id },
+            data: {
+              status: 'pending',
+              reason: null, // Limpar motivo ao resetar
+            },
+          });
+          resetCount++;
+        }
+      }
+
+      if (resetCount > 0) {
+        console.log(`🔄 ${resetCount} tarefa(s) recorrente(s) resetada(s) de "completed" para "pending" (hoje é dia de recorrência).`);
+      }
+
+      return resetCount;
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Erro desconhecido';
+      if (errorMsg.includes('Can\'t reach database') || errorMsg.includes('database server')) {
+        console.warn('⚠️ Banco de dados não acessível ao resetar tarefas recorrentes. Túnel SSH pode estar inativo.');
+        return 0;
+      }
+      console.error('❌ Erro ao resetar tarefas recorrentes concluídas:', errorMsg);
+      return 0;
+    }
+  },
 };

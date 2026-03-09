@@ -68,9 +68,11 @@ export const taskService = {
     });
   },
 
-  async update(id: number, data: UpdateTaskInput & { assignedToId?: number | null }) {
+  async update(id: number, data: UpdateTaskInput & { assignedToId?: number | null }, userId?: number) {
     // Verificar se existe
-    await taskService.findById(id);
+    const existingTask = await taskService.findById(id);
+    const wasCompleted = existingTask.status === 'completed';
+    const willBeCompleted = data.status === 'completed';
 
     // Se status não requer motivo, limpar reason
     const statusRequiresReason = data.status && ['waiting', 'not-executed'].includes(data.status);
@@ -81,6 +83,22 @@ export const taskService = {
 
     if (clearOverdue) {
       await overdueService.resolveByTask(id);
+    }
+
+    // Registrar conclusão na tabela de histórico se a tarefa foi completada agora
+    if (!wasCompleted && willBeCompleted) {
+      const now = new Date();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      await prisma.taskCompletion.create({
+        data: {
+          taskId: id,
+          userId: userId ?? null,
+          completedAt: now,
+          completedDate: today, // Data normalizada para meia-noite
+        },
+      });
     }
 
     return prisma.task.update({

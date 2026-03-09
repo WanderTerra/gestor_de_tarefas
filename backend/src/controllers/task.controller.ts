@@ -111,7 +111,7 @@ export const taskController = {
 
       // Remover assignedToId do data antes de passar para o service (será passado separadamente)
       const { assignedToId: _, ...taskData } = data;
-      const task = await taskService.update(id, { ...taskData, assignedToId });
+      const task = await taskService.update(id, { ...taskData, assignedToId }, user.id);
 
       // Auditoria
       const action = data.status && Object.keys(data).length === 1 

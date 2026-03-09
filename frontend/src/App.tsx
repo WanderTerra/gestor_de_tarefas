@@ -173,9 +173,9 @@ const TaskApp: React.FC = () => {
             return false;
           }
           // Se é o dia correto, verificar se o horário já passou
-          if (task.timeLimit) {
-            return currentTime >= task.timeLimit;
-          }
+      if (task.timeLimit) {
+        return currentTime >= task.timeLimit;
+      }
           // Se não tem timeLimit, não está atrasada
           return false;
         }
@@ -247,8 +247,10 @@ const TaskApp: React.FC = () => {
     [currentTime],
   );
 
+  // Tarefas recorrentes sempre aparecem, independentemente do status
+  // Tarefas não-recorrentes só aparecem se não tiverem status terminal
   const activeTasks = tasks.filter(
-    (t) => !isTerminalStatus(t.status) || fadingCards.has(t.id),
+    (t) => t.isRecurring || !isTerminalStatus(t.status) || fadingCards.has(t.id),
   );
 
   // Filtrar tarefas por usuário (se gestor e filtro selecionado)
@@ -530,40 +532,40 @@ const TaskApp: React.FC = () => {
       {!loading && page === 'tasks' && (
         <div className="container mx-auto px-4 pt-6 pb-4">
           <div className="flex items-center justify-end">
-            <Button
-              size="default"
-              className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+                <Button
+                  size="default"
+                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
               onClick={() => setIsDialogOpen(true)}
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
-                backdropFilter: 'blur(12px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'rgba(15, 23, 42, 0.9)',
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                  inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                  inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                  0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                  0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                `,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
-                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
-                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              Nova Tarefa
-            </Button>
-          </div>
-        </div>
-      )}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)',
+                    backdropFilter: 'blur(12px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: 'rgba(15, 23, 42, 0.9)',
+                    boxShadow: `
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                      inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                      inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                      0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                      0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                    `,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.3) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.2) 100%)';
+                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Nova Tarefa
+                </Button>
+                  </div>
+                    </div>
+                  )}
 
       <CreateTaskWizard
         open={isDialogOpen}
@@ -674,9 +676,9 @@ const TaskApp: React.FC = () => {
                   <div className="flex items-center gap-2.5 shrink-0">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                       <Building2 className="h-5 w-5" />
-                    </div>
-                    <span className="font-bold text-slate-800">{roleLabel}</span>
                   </div>
+                    <span className="font-bold text-slate-800">{roleLabel}</span>
+                </div>
                   <div className="flex-1 h-px bg-slate-200 min-w-4" />
                   <span className="text-sm font-medium text-slate-600 shrink-0">
                     {taskCount} tarefa{taskCount !== 1 ? 's' : ''}
@@ -774,18 +776,18 @@ const TaskApp: React.FC = () => {
                     >
                       {/* Faixa ATRASADO só quando atrasado; sem tarja o card não tem “testona” */}
                       <div className="relative w-full flex-shrink-0 h-8">
-                        {isTaskOverdue(task) && (
-                          <div
+                      {isTaskOverdue(task) && (
+                          <div 
                             className="absolute inset-0 w-full flex items-center justify-center text-white font-bold tracking-wider text-xs pointer-events-none"
-                            style={{
+                            style={{ 
                               background: '#FF2C2C',
                               borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
                               letterSpacing: '0.15em',
                             }}
                           >
                             ATRASADO
-                          </div>
-                        )}
+                        </div>
+                      )}
                       </div>
 
                       <CardHeader className="pb-2 pt-3 space-y-2">
@@ -803,7 +805,7 @@ const TaskApp: React.FC = () => {
                           >
                             {config.label}
                           </Badge>
-                          {isManager && hoveredCardId === task.id && (
+                        {isManager && hoveredCardId === task.id && (
                           <div className="flex gap-1 transition-opacity duration-200">
                             <Button
                               variant="ghost"
@@ -832,14 +834,14 @@ const TaskApp: React.FC = () => {
                             </Button>
                             {/* Botão de transferência (apenas para adm) */}
                             {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
+                              <Button
+                                variant="ghost"
+                                size="icon"
                               className="h-6 w-6 opacity-70 hover:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTransferTask(task);
-                              }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTransferTask(task);
+                                }}
                                 style={{
                                   background: 'rgba(255, 255, 255, 0.1)',
                                   backdropFilter: 'blur(8px)',
@@ -892,7 +894,7 @@ const TaskApp: React.FC = () => {
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
-                          )}
+                        )}
                         </div>
 
                         {/* Título do card — linha 2, nunca sob a tag */}

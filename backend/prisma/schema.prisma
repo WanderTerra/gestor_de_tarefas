@@ -30,6 +30,7 @@ model User {
   auditLogs     AuditLog[]
   overdueAlerts OverdueAlert[]
   approvedUsers User[]         @relation("UserApprovals") // Usuários aprovados por este gestor
+  taskCompletions TaskCompletion[] @relation("TaskCompletions") // Histórico de conclusões de tarefas
 
   @@map("users")
 }
@@ -57,6 +58,8 @@ model Task {
 
   // Relação com alertas
   overdueAlerts OverdueAlert[]
+  // Relação com histórico de conclusões
+  completions TaskCompletion[]
 
   @@index([assignedToId])
   @@index([status])
@@ -100,4 +103,22 @@ model OverdueAlert {
   @@index([status])
   @@index([detectedAt])
   @@map("overdue_alerts")
+}
+
+model TaskCompletion {
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("task_id")
+  userId    Int?     @map("user_id") // Usuário que completou a tarefa (null = sistema)
+  completedAt DateTime @default(now()) @map("completed_at") // Data e hora exata da conclusão
+  completedDate DateTime @map("completed_date") // Data da conclusão (normalizada para meia-noite, para verificar se foi hoje)
+
+  // Relações
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User? @relation("TaskCompletions", fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([completedDate])
+  @@index([completedAt])
+  @@unique([taskId, completedDate]) // Impede duplicação de conclusão no mesmo dia
+  @@map("task_completions")
 }
