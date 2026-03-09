@@ -463,7 +463,7 @@ export const overdueService = {
   /**
    * Verifica se hoje é um dia de recorrência válido para a tarefa
    */
-  private isTodayRecurringDay(task: { recurringDays: string | null; recurringDayOfMonth: number | null }): boolean {
+  isTodayRecurringDay(task: { recurringDays: string | null; recurringDayOfMonth: number | null }): boolean {
     const today = new Date();
     const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
     const todayDayOfMonth = today.getDate();
