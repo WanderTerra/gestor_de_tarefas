@@ -521,6 +521,89 @@ export const overdueService = {
   },
 
   /**
+   * Limpa flag isOverdue de tarefas recorrentes semanais que foram marcadas incorretamente
+   * (não estão no dia correto da semana ou o horário ainda não passou)
+   */
+  async clearIncorrectWeeklyRecurringOverdue(): Promise<number> {
+    try {
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Buscar tarefas recorrentes semanais que estão marcadas como atrasadas
+      const weeklyRecurringTasks = await prisma.task.findMany({
+        where: {
+          isRecurring: true,
+          recurringDayOfMonth: null, // Apenas tarefas semanais (sem dia do mês)
+          isOverdue: true,
+          status: { in: ACTIVE_STATUSES },
+        },
+        select: {
+          id: true,
+          timeLimit: true,
+          recurringDays: true,
+        },
+      });
+
+      const dayMap: Record<number, string> = {
+        0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
+      };
+      const todayDayOfWeek = now.getDay();
+      const todayDayName = dayMap[todayDayOfWeek];
+
+      let clearedCount = 0;
+
+      for (const task of weeklyRecurringTasks) {
+        let shouldClear = false;
+
+        // Verificar se tem dias da semana configurados
+        if (task.recurringDays) {
+          const recurringDaysArray = task.recurringDays.split(',');
+          
+          // Se hoje não é um dos dias de recorrência, limpar flag
+          if (!recurringDaysArray.includes(todayDayName)) {
+            shouldClear = true;
+          } else if (task.timeLimit) {
+            // Se hoje é um dia de recorrência, verificar se o horário já passou
+            // Se o horário ainda não passou, limpar flag
+            if (task.timeLimit > currentTime) {
+              shouldClear = true;
+            }
+          }
+        } else {
+          // Se não tem dias configurados, verificar apenas o horário
+          if (task.timeLimit && task.timeLimit > currentTime) {
+            shouldClear = true;
+          }
+        }
+
+        if (shouldClear) {
+          await prisma.task.update({
+            where: { id: task.id },
+            data: { isOverdue: false },
+          });
+          clearedCount++;
+        }
+      }
+
+      if (clearedCount > 0) {
+        console.log(`🧹 ${clearedCount} tarefa(s) recorrente(s) semanal(is) tiveram flag isOverdue limpa (marcação incorreta).`);
+      }
+
+      return clearedCount;
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Erro desconhecido';
+      if (errorMsg.includes('Can\'t reach database') || errorMsg.includes('database server')) {
+        console.warn('⚠️ Banco de dados não acessível ao limpar flags incorretas. Túnel SSH pode estar inativo.');
+        return 0;
+      }
+      console.error('❌ Erro ao limpar flags incorretas de tarefas recorrentes semanais:', errorMsg);
+      return 0;
+    }
+  },
+
+  /**
    * Reseta tarefas recorrentes concluídas para "pending" apenas se hoje for um dia de recorrência válido
    * e a tarefa não foi completada hoje (verifica tabela task_completions)
    */
