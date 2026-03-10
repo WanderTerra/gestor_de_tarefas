@@ -285,10 +285,10 @@ const TaskApp: React.FC = () => {
     [currentTime],
   );
 
-  // Tarefas recorrentes sempre aparecem, independentemente do status
-  // Tarefas não-recorrentes só aparecem se não tiverem status terminal
+  // Tarefas aparecem apenas se não tiverem status terminal OU se estiverem em animação de fade
+  // Tarefas recorrentes concluídas serão resetadas automaticamente pelo backend para "pending"
   const activeTasks = tasks.filter(
-    (t) => t.isRecurring || !isTerminalStatus(t.status) || fadingCards.has(t.id),
+    (t) => !isTerminalStatus(t.status) || fadingCards.has(t.id),
   );
 
   // Filtrar tarefas por usuário (se gestor e filtro selecionado)
