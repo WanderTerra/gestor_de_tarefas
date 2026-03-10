@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Pencil } from 'lucide-react';
 import { Task, statusConfig, getStatusColorRGB } from '@/types/task';
@@ -15,16 +14,6 @@ interface ViewTaskDialogProps {
   onUpdateTutorialLink?: (id: number, data: UpdateTaskPayload) => Promise<void>;
   canEditTutorialLink?: boolean;
 }
-
-const daysOfWeek = [
-  { id: 'dom', label: 'Dom' },
-  { id: 'seg', label: 'Seg' },
-  { id: 'ter', label: 'Ter' },
-  { id: 'qua', label: 'Qua' },
-  { id: 'qui', label: 'Qui' },
-  { id: 'sex', label: 'Sex' },
-  { id: 'sab', label: 'Sáb' },
-];
 
 const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({ 
   task, 

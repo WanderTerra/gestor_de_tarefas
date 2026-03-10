@@ -42,7 +42,6 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
-  const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
 
   // Carregar tarefas
   useEffect(() => {

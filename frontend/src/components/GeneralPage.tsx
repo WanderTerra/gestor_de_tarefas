@@ -236,7 +236,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
         const fromISO = brToISO(dateFrom);
         const toISO = brToISO(dateTo);
         if (fromISO && toISO) {
-          const completed = await taskApi.getCompleted({ from: fromISO, to: toISO, userId: selectedUser?.id || undefined });
+          const completed = await taskApi.getCompleted({ from: fromISO, to: toISO });
           setTasks(completed);
         }
       } else {

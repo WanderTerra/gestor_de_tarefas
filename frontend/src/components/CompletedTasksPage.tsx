@@ -198,7 +198,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const handleUpdateTutorialLink = async (taskId: number, data: { tutorialLink?: string | null }) => {
     try {
       await taskApi.update(taskId, data);
-      await fetchCompleted();
+      await fetchCompleted(dateFrom, dateTo);
     } catch (error) {
       console.error('Erro ao atualizar link do tutorial:', error);
       throw error;
