@@ -39,6 +39,8 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
   const [timeLimit, setTimeLimit] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [assignedToId, setAssignedToId] = useState<string>('');
+  const [estimatedTime, setEstimatedTime] = useState<string>('');
+  const [tutorialLink, setTutorialLink] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,8 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
       setRecurringDayOfMonth(task.recurringDayOfMonth ?? null);
       setTimeLimit(task.timeLimit || '');
       setAssignedToId(task.assignedToId ? String(task.assignedToId) : '');
+      setEstimatedTime(task.estimatedTime ? String(task.estimatedTime) : '');
+      setTutorialLink(task.tutorialLink || '');
       
       // Converter deadline de string para Date se existir
       if (task.deadline) {
@@ -92,6 +96,11 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
         timeLimit: timeLimit || null,
         deadline: !isRecurring && deadline ? deadline.toISOString() : null,
         assignedToId: assignedToId ? Number(assignedToId) : null,
+        estimatedTime: estimatedTime.trim() ? (() => {
+          const num = parseInt(estimatedTime.trim(), 10);
+          return isNaN(num) || num <= 0 ? null : num;
+        })() : null,
+        tutorialLink: tutorialLink.trim() || null,
       };
 
       await onSave(task.id, data);
@@ -377,6 +386,115 @@ const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, open, onOpenChang
                 `,
               }}
             />
+          </div>
+
+          {/* Tempo Estimado */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Tempo Estimado (minutos)</label>
+            <input
+              type="text"
+              value={estimatedTime}
+              onChange={(e) => {
+                let value = e.target.value;
+                // Permitir apenas números
+                value = value.replace(/\D/g, '');
+                // Limitar a um número razoável (ex: 9999 minutos = ~166 horas)
+                if (value && parseInt(value, 10) > 9999) {
+                  value = '9999';
+                }
+                setEstimatedTime(value);
+              }}
+              onBlur={() => {
+                if (estimatedTime.trim()) {
+                  const num = parseInt(estimatedTime.trim(), 10);
+                  if (isNaN(num) || num <= 0) {
+                    setEstimatedTime('');
+                  } else {
+                    setEstimatedTime(String(num));
+                  }
+                }
+              }}
+              placeholder="Ex: 30"
+              maxLength={4}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-lg"
+              style={{ 
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '0.05em',
+                fontFamily: 'monospace',
+                background: 'rgba(255, 255, 255, 0.4)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                  0 0 0 1px rgba(255, 255, 255, 0.2),
+                  0 0 10px rgba(255, 255, 255, 0.08),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                `,
+              }}
+            />
+            {estimatedTime && (
+              <p className="text-xs text-muted-foreground">
+                {(() => {
+                  const minutes = parseInt(estimatedTime, 10);
+                  if (isNaN(minutes)) return '';
+                  const hours = Math.floor(minutes / 60);
+                  const mins = minutes % 60;
+                  if (hours > 0 && mins > 0) {
+                    return `≈ ${hours}h ${mins}min`;
+                  } else if (hours > 0) {
+                    return `≈ ${hours}h`;
+                  } else {
+                    return `≈ ${minutes}min`;
+                  }
+                })()}
+              </p>
+            )}
+          </div>
+
+          {/* Link do Tutorial */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Link do Tutorial (opcional)</label>
+            <input
+              type="text"
+              value={tutorialLink}
+              onChange={(e) => setTutorialLink(e.target.value)}
+              onBlur={() => {
+                const trimmed = tutorialLink.trim();
+                if (trimmed && !trimmed.match(/^https?:\/\/.+/)) {
+                  // Se não começar com http:// ou https://, adicionar
+                  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+                    setTutorialLink(`https://${trimmed}`);
+                  }
+                }
+              }}
+              placeholder="Ex: https://exemplo.com/tutorial"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ 
+                background: 'rgba(255, 255, 255, 0.4)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+                  0 0 0 1px rgba(255, 255, 255, 0.2),
+                  0 0 10px rgba(255, 255, 255, 0.08),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.03)
+                `,
+              }}
+            />
+            {tutorialLink && (
+              <p className="text-xs text-muted-foreground">
+                <a 
+                  href={tutorialLink.startsWith('http') ? tutorialLink : `https://${tutorialLink}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  Abrir tutorial →
+                </a>
+              </p>
+            )}
           </div>
 
           {/* Botões */}

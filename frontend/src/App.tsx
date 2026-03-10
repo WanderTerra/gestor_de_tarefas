@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Plus, Loader2, AlertCircle,
   CheckCircle2, Clock, Pencil, Trash2, ArrowRight,
-  X, User as UserIcon, Repeat, Filter, Building2, ChevronDown,
+  X, User as UserIcon, Repeat, Filter, Building2, ChevronDown, Eye,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
 import { User, getRoleLabel } from '@/types/user';
@@ -23,6 +23,7 @@ import RejectedPage from '@/components/RejectedPage';
 import UserManagement from '@/components/UserManagement';
 import AuditLogView from '@/components/AuditLogView';
 import EditTaskDialog from '@/components/EditTaskDialog';
+import ViewTaskDialog from '@/components/ViewTaskDialog';
 import TransferTaskDialog from '@/components/TransferTaskDialog';
 import GeneralPage from '@/components/GeneralPage';
 import AuthorizationRequestsPage from '@/components/AuthorizationRequestsPage';
@@ -87,6 +88,7 @@ const TaskApp: React.FC = () => {
   const [savingReason, setSavingReason] = useState(false);
   const [employees, setEmployees] = useState<User[]>([]);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
   const [transferTask, setTransferTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -547,12 +549,32 @@ const TaskApp: React.FC = () => {
     }
   };
 
+  // Função para atualizar apenas o link do tutorial
+  const handleUpdateTutorialLink = async (taskId: number, data: { tutorialLink?: string | null }) => {
+    try {
+      await updateTask(taskId, data);
+    } catch (error) {
+      console.error('Erro ao atualizar link do tutorial:', error);
+      throw error;
+    }
+  };
+
   // Verificar se é administrador (role === 'adm')
   const isAdmin = user?.role === 'adm';
 
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests') => {
-    setPage(navPage);
-  };
+  const handleNavigate = useCallback((navPage: 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests', userId?: number) => {
+    if (navPage === 'tasks' && userId !== undefined) {
+      // Mudar a página e aplicar o filtro simultaneamente
+      setPage(navPage);
+      setSelectedUserId(String(userId));
+    } else {
+      setPage(navPage);
+      // Se não for tasks ou não tiver userId, resetar o filtro
+      if (navPage !== 'tasks') {
+        setSelectedUserId('all');
+      }
+    }
+  }, []);
 
   const getCurrentPage = (): 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorization-requests' => {
     if (page === 'tasks') return 'tasks';
@@ -564,7 +586,14 @@ const TaskApp: React.FC = () => {
     return 'tasks';
   };
 
-  if (page === 'users') return <UserManagement onBack={() => setPage('tasks')} onNavigate={setPage} />;
+  // Proteção: redirecionar usuários comuns que tentarem acessar páginas restritas
+  useEffect(() => {
+    if (!isManager && (page === 'general' || page === 'users' || page === 'audit' || page === 'authorization-requests')) {
+      setPage('tasks');
+    }
+  }, [page, isManager]);
+
+  if (page === 'users') return <UserManagement onBack={() => setPage('tasks')} onNavigate={handleNavigate} />;
   if (page === 'audit') return <AuditLogView onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'general') return <GeneralPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'all-tasks') return <AllTasksPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
@@ -749,21 +778,8 @@ const TaskApp: React.FC = () => {
             </div>
           )}
 
-          {/* Estado vazio: sem tarefas ativas (nem com filtro) */}
-          {activeTasks.length === 0 && !showCongratulations && (
-            <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
-              <CheckCircle2 className="w-12 h-12 text-green-500/60" />
-              <h3 className="text-xl font-bold text-foreground">
-                Nenhuma tarefa ativa encontrada
-              </h3>
-              <p className="text-muted-foreground max-w-md">
-                Parece que você não tem tarefas ativas no momento. Que tal criar uma nova?
-              </p>
-            </div>
-          )}
-
           {/* Estado: filtro aplicado mas nenhum resultado */}
-          {activeTasks.length > 0 && filteredActiveTasks.length === 0 && (
+          {isManager && selectedUserId !== 'all' && filteredActiveTasks.length === 0 && activeTasks.length > 0 && !loading && (
             <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
               <UserIcon className="w-12 h-12 text-slate-300" />
               <h3 className="text-xl font-bold text-foreground">
@@ -771,6 +787,32 @@ const TaskApp: React.FC = () => {
               </h3>
               <p className="text-muted-foreground max-w-md">
                 Escolha &quot;Todos os usuários&quot; no filtro acima ou outro usuário para ver as tarefas.
+              </p>
+            </div>
+          )}
+
+          {/* Estado: filtro aplicado e nenhuma tarefa ativa no total */}
+          {isManager && selectedUserId !== 'all' && activeTasks.length === 0 && !showCongratulations && !loading && (
+            <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
+              <UserIcon className="w-12 h-12 text-slate-300" />
+              <h3 className="text-xl font-bold text-foreground">
+                Nenhuma tarefa para o usuário selecionado
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                Este usuário não possui tarefas ativas no momento.
+              </p>
+            </div>
+          )}
+
+          {/* Estado vazio: sem tarefas ativas (sem filtro ou quando não é manager) */}
+          {activeTasks.length === 0 && !showCongratulations && (selectedUserId === 'all' || !isManager) && !loading && (
+            <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
+              <CheckCircle2 className="w-12 h-12 text-green-500/60" />
+              <h3 className="text-xl font-bold text-foreground">
+                Nenhuma tarefa ativa encontrada
+              </h3>
+              <p className="text-muted-foreground max-w-md">
+                Parece que você não tem tarefas ativas no momento. Que tal criar uma nova?
               </p>
             </div>
           )}
@@ -1018,9 +1060,49 @@ const TaskApp: React.FC = () => {
 
                         {/* Título do card — linha 2, nunca sob a tag */}
                         <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-base font-semibold line-clamp-2 flex-1 leading-snug">
+                          <CardTitle 
+                            className="text-base font-semibold line-clamp-2 flex-1 leading-snug cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => setViewTask(task)}
+                            title="Clique para ver detalhes"
+                          >
                             {task.name}
                           </CardTitle>
+                          {/* Botão de visualização - visível para todos */}
+                          {hoveredCardId === task.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-70 hover:opacity-100 shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewTask(task);
+                              }}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                color: 'rgba(59, 130, 246, 0.7)',
+                                boxShadow: `
+                                  inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                  0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                `,
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                              }}
+                              title="Ver detalhes"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent className="flex-1 min-h-0 flex flex-col space-y-2">
@@ -1210,6 +1292,14 @@ const TaskApp: React.FC = () => {
         onOpenChange={(open) => { if (!open) setEditTask(null); }}
         onSave={updateTask}
         employees={employees}
+      />
+
+      <ViewTaskDialog
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => { if (!open) setViewTask(null); }}
+        onUpdateTutorialLink={handleUpdateTutorialLink}
+        canEditTutorialLink={true}
       />
 
       {/* Dialog de transferência de tarefa (apenas para adm) */}

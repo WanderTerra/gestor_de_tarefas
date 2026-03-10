@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
-  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown,
+  Loader2, AlertCircle, Search, CalendarDays, Clock, CheckCircle2, Pencil, Trash2, User as UserIcon, Filter, Repeat, Building2, ChevronDown, Eye,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
@@ -12,6 +12,7 @@ import { taskApi, userApi, UpdateTaskPayload } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import EditTaskDialog from '@/components/EditTaskDialog';
+import ViewTaskDialog from '@/components/ViewTaskDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User, getRoleLabel } from '@/types/user';
 
@@ -93,6 +94,7 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [employees, setEmployees] = useState<User[]>([]);
@@ -190,6 +192,16 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     } catch (err) {
       console.error('Erro ao atualizar tarefa:', err);
       setError(err instanceof Error ? err.message : 'Erro ao atualizar tarefa');
+    }
+  };
+
+  const handleUpdateTutorialLink = async (taskId: number, data: { tutorialLink?: string | null }) => {
+    try {
+      await taskApi.update(taskId, data);
+      await fetchCompleted();
+    } catch (error) {
+      console.error('Erro ao atualizar link do tutorial:', error);
+      throw error;
     }
   };
 
@@ -586,9 +598,49 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
 
                             {/* Título do card */}
                             <div className="flex items-start justify-between gap-2">
-                              <CardTitle className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh]">
+                              <CardTitle 
+                                className="text-base font-semibold line-clamp-2 flex-1 min-h-[2lh] cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => setViewTask(task)}
+                                title="Clique para ver detalhes"
+                              >
                                 {task.name}
                               </CardTitle>
+                              {/* Botão de visualização - visível para todos */}
+                              {hoveredCardId === task.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-70 hover:opacity-100 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewTask(task);
+                                  }}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(8px)',
+                                    WebkitBackdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: 'rgba(59, 130, 246, 0.7)',
+                                    boxShadow: `
+                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                    `,
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                  }}
+                                  title="Ver detalhes"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                             </div>
                           </CardHeader>
                           <CardContent className="flex-1 flex flex-col space-y-3">
@@ -690,6 +742,15 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
         onOpenChange={(open) => { if (!open) setEditTask(null); }}
         onSave={handleUpdateTask}
         employees={employees}
+      />
+
+      {/* Dialog de visualização */}
+      <ViewTaskDialog
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => { if (!open) setViewTask(null); }}
+        onUpdateTutorialLink={handleUpdateTutorialLink}
+        canEditTutorialLink={true}
       />
 
       {/* Dialog de confirmação de deleção */}

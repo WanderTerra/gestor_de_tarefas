@@ -248,13 +248,15 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
                 label="Todas"
               />
             )}
-            <NavButton
-              onClick={() => onNavigate('general')}
-              isActive={currentPage === 'general'}
-              accentColor="linear-gradient(135deg, #059669 0%, #047857 100%)"
-              icon={<BadgeCheck className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
-              label="Geral"
-            />
+            {isManager && (
+              <NavButton
+                onClick={() => onNavigate('general')}
+                isActive={currentPage === 'general'}
+                accentColor="linear-gradient(135deg, #059669 0%, #047857 100%)"
+                icon={<BadgeCheck className="w-4 h-4 shrink-0" style={{ color: 'currentColor' }} />}
+                label="Geral"
+              />
+            )}
             {isManager && (
               <>
                 <NavButton

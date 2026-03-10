@@ -5,25 +5,25 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus, X, Filter } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, UserPlus, X, Filter, Eye } from 'lucide-react';
 import { User, UserRole, getRoleLabel, isManagerRole } from '@/types/user';
-import { userApi, ApiError } from '@/services/api';
+import { userApi, taskApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
 
 interface UserManagementProps {
   onBack: () => void;
-  onNavigate?: (page: 'tasks' | 'general' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks') => void;
+  onNavigate?: (page: 'tasks' | 'general' | 'users' | 'audit' | 'authorization-requests' | 'all-tasks', userId?: number) => void;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) => {
 
-  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks') => {
+  const handleNavigate = (navPage: 'tasks' | 'users' | 'audit' | 'general' | 'authorization-requests' | 'all-tasks', userId?: number) => {
     if (navPage === 'users') {
       // Já estamos na página de usuários
       return;
     }
     if (onNavigate) {
-      onNavigate(navPage);
+      onNavigate(navPage, userId);
     } else {
       onBack();
     }
@@ -37,6 +37,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
   const [saving, setSaving] = useState(false);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterName, setFilterName] = useState('');
+  const [userTaskCounts, setUserTaskCounts] = useState<Record<number, number>>({});
 
   // Form state
   const [username, setUsername] = useState('');
@@ -59,6 +60,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Buscar contagem de tarefas para cada usuário
+  useEffect(() => {
+    if (users.length === 0) return;
+    
+    const fetchTaskCounts = async () => {
+      try {
+        const allTasks = await taskApi.getAll();
+        const counts: Record<number, number> = {};
+        users.forEach(user => {
+          counts[user.id] = allTasks.filter(t => t.assignedToId === user.id).length;
+        });
+        setUserTaskCounts(counts);
+      } catch (err) {
+        console.error('Erro ao buscar contagem de tarefas:', err);
+      }
+    };
+
+    fetchTaskCounts();
+  }, [users]);
 
   const resetForm = () => {
     setUsername('');
@@ -397,7 +418,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                           backdropFilter: 'blur(12px)',
                           WebkitBackdropFilter: 'blur(12px)',
                           border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: isManagerRole(user.role)
+                          color: userTaskCounts[user.id] === 0 
+                            ? 'rgba(71, 85, 105, 0.6)'
+                            : isManagerRole(user.role)
                             ? 'rgba(109, 40, 217, 0.6)' 
                             : 'rgba(37, 99, 235, 0.6)',
                           boxShadow: `
@@ -407,20 +430,68 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                             inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
                             0 2px 8px 0 rgba(0, 0, 0, 0.1),
                             0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                            0 0 8px 0 ${isManagerRole(user.role)
+                            0 0 8px 0 ${userTaskCounts[user.id] === 0
+                              ? 'rgba(71, 85, 105, 0.15)'
+                              : isManagerRole(user.role)
                               ? 'rgba(109, 40, 217, 0.15)' 
                               : 'rgba(37, 99, 235, 0.15)'}
                           `,
                         }}
                       >
-                        {getRoleLabel(user.role)}
+                        {userTaskCounts[user.id] === 0 ? 'Sem atribuição' : getRoleLabel(user.role)}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col space-y-3">
                     <p className="text-sm text-slate-600">@{user.username}</p>
+                    {userTaskCounts[user.id] !== undefined && (
+                      <p className="text-sm text-slate-600">
+                        {userTaskCounts[user.id]} {userTaskCounts[user.id] === 1 ? 'tarefa' : 'tarefas'}
+                      </p>
+                    )}
                     <div className="flex-1" />
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
+                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/50">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (onNavigate) {
+                            onNavigate('tasks', user.id);
+                          } else {
+                            onBack();
+                          }
+                        }}
+                        className="w-full"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          backdropFilter: 'blur(12px) saturate(180%)',
+                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: 'rgba(15, 23, 42, 0.8)',
+                          boxShadow: `
+                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
+                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
+                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
+                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                            0 1px 4px 0 rgba(0, 0, 0, 0.06)
+                          `,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                        }}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Visualizar
+                      </Button>
+                      <div className="flex items-center justify-between">
                       <Badge 
                         variant="outline"
                         style={{
@@ -474,6 +545,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                       >
                         {user.active ? 'Desativar' : 'Ativar'}
                       </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

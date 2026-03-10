@@ -75,3 +75,14 @@ export const statusConfig: Record<TaskStatus, StatusConfig> = {
     requiresReason: true
   }
 };
+
+export const getStatusColorRGB = (status: TaskStatus): string => {
+  const colorMap: Record<TaskStatus, string> = {
+    'pending': '250, 204, 21',      // yellow-400 (mais suave)
+    'in-progress': '96, 165, 250',  // blue-400 (mais suave)
+    'waiting': '251, 146, 60',      // orange-400 (mais suave)
+    'completed': '74, 222, 128',     // green-400 (mais suave)
+    'not-executed': '248, 113, 113', // red-400 (mais suave)
+  };
+  return colorMap[status] || '148, 163, 184';
+};

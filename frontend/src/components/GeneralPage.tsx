@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import { User, getRoleLabel } from '@/types/user';
 import EditTaskDialog from '@/components/EditTaskDialog';
+import ViewTaskDialog from '@/components/ViewTaskDialog';
 import TransferTaskDialog from '@/components/TransferTaskDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -81,6 +82,7 @@ interface UserWithCount {
 
 const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const { isManager } = useAuth();
+  // Esta página é apenas para managers (proteção no App.tsx)
   const [mode, setMode] = useState<'completed' | 'active'>('completed');
   const [view, setView] = useState<'users' | 'detail'>('users');
   const [selectedUser, setSelectedUser] = useState<UserWithCount | null>(null);
@@ -92,6 +94,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const [dateFrom, setDateFrom] = useState(() => lastWeekBR());
   const [dateTo, setDateTo] = useState(() => todayBR());
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
   const [transferTask, setTransferTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -133,8 +136,9 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   }, []);
 
   useEffect(() => {
-    if (isManager) userApi.getAll().then(setEmployees).catch(() => {});
-  }, [isManager]);
+    // Carregar lista de funcionários (apenas managers acessam esta página)
+    userApi.getAll().then(setEmployees).catch(() => {});
+  }, []);
 
   // Quando mudar para o modo 'completed', atualizar datas para última semana
   useEffect(() => {
@@ -179,6 +183,15 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     return tasks.filter((t) => (t.assignedToId ?? null) === selectedUser.id);
   }, [tasks, selectedUser]);
 
+  // Obter o nome real do usuário selecionado (atualizado quando employees carregar)
+  const selectedUserName = useMemo(() => {
+    if (!selectedUser) return '';
+    if (selectedUser.id === null) return 'Sem atribuição';
+    // Buscar na lista de employees
+    const userFromList = employees.find((e) => e.id === selectedUser.id);
+    return userFromList?.name ?? selectedUser.name;
+  }, [selectedUser, employees]);
+
   const tasksFilteredByDate = useMemo(() => {
     // No modo 'active' (Todas as tarefas), não aplicar filtro de data - mostrar todas
     if (mode === 'active') return tasksForSelectedUser;
@@ -215,6 +228,27 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   };
 
   // Função para atualizar tarefa
+  const handleUpdateTutorialLink = async (taskId: number, data: { tutorialLink?: string | null }) => {
+    try {
+      await taskApi.update(taskId, data);
+      // Recarregar tarefas
+      if (mode === 'completed') {
+        const fromISO = brToISO(dateFrom);
+        const toISO = brToISO(dateTo);
+        if (fromISO && toISO) {
+          const completed = await taskApi.getCompleted({ from: fromISO, to: toISO, userId: selectedUser?.id || undefined });
+          setTasks(completed);
+        }
+      } else {
+        const all = await taskApi.getAll();
+        setTasks(all);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar link do tutorial:', error);
+      throw error;
+    }
+  };
+
   const handleUpdateTask = async (taskId: number, data: any) => {
     try {
       await taskApi.update(taskId, data);
@@ -291,7 +325,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
           </div>
         )}
 
-        {view === 'users' && (
+        {view === 'users' && isManager && (
           <>
             <Card className="mb-6" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
               <CardContent className="pt-4 pb-4">
@@ -377,7 +411,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                 Voltar
               </Button>
               <h3 className="text-base font-bold text-slate-800">
-                {mode === 'completed' ? 'Tarefas concluídas' : 'Todas as tarefas'} — {selectedUser.name}
+                {mode === 'completed' ? 'Tarefas concluídas' : 'Todas as tarefas'} — {selectedUserName}
               </h3>
             </div>
 
@@ -476,7 +510,51 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                                 </Button>
                               </div>
                             )}
-                            <CardTitle className="text-base font-semibold line-clamp-2">{task.name}</CardTitle>
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle 
+                                className="text-base font-semibold line-clamp-2 flex-1 cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => setViewTask(task)}
+                                title="Clique para ver detalhes"
+                              >
+                                {task.name}
+                              </CardTitle>
+                              {/* Botão de visualização - visível para todos */}
+                              {hoveredCardId === task.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-70 hover:opacity-100 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewTask(task);
+                                  }}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(8px)',
+                                    WebkitBackdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: 'rgba(59, 130, 246, 0.7)',
+                                    boxShadow: `
+                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                    `,
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                  }}
+                                  title="Ver detalhes"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
                           </CardHeader>
                           <CardContent className="flex-1 flex flex-col space-y-3">
                             {task.description && <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>}
@@ -591,7 +669,51 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                                   </Button>
                                 </div>
                               )}
-                              <CardTitle className="text-base font-semibold line-clamp-2">{task.name}</CardTitle>
+                              <div className="flex items-start justify-between gap-2">
+                              <CardTitle 
+                                className="text-base font-semibold line-clamp-2 flex-1 cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => setViewTask(task)}
+                                title="Clique para ver detalhes"
+                              >
+                                {task.name}
+                              </CardTitle>
+                              {/* Botão de visualização - visível para todos */}
+                              {hoveredCardId === task.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-70 hover:opacity-100 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewTask(task);
+                                  }}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(8px)',
+                                    WebkitBackdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    color: 'rgba(59, 130, 246, 0.7)',
+                                    boxShadow: `
+                                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
+                                      0 2px 4px 0 rgba(0, 0, 0, 0.1)
+                                    `,
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'rgba(59, 130, 246, 0.9)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'rgba(59, 130, 246, 0.7)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+                                  }}
+                                  title="Ver detalhes"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col space-y-3">
                               {task.description && <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>}
@@ -653,6 +775,15 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
         onOpenChange={(open) => { if (!open) setEditTask(null); }}
         onSave={handleUpdateTask}
         employees={employees}
+      />
+
+      {/* Dialog de visualização */}
+      <ViewTaskDialog
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => { if (!open) setViewTask(null); }}
+        onUpdateTutorialLink={handleUpdateTutorialLink}
+        canEditTutorialLink={true}
       />
 
       {/* Dialog de transferência */}

@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Loader2, ArrowLeft, CheckCircle2, Clock, AlertCircle, XCircle, PlayCircle,
-  Pencil, Trash2, ChevronDown,
+  Pencil, Trash2, ChevronDown, Eye,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi, UpdateTaskPayload } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import EditTaskDialog from '@/components/EditTaskDialog';
+import ViewTaskDialog from '@/components/ViewTaskDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User } from '@/types/user';
 
@@ -37,9 +38,11 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<User[]>([]);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
+  const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
 
   // Carregar tarefas
   useEffect(() => {
@@ -120,6 +123,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
       console.error('Erro ao deletar tarefa:', error);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleUpdateTutorialLink = async (taskId: number, data: { tutorialLink?: string | null }) => {
+    try {
+      await taskApi.update(taskId, data);
+      const updated = await taskApi.getAll();
+      setTasks(updated);
+    } catch (error) {
+      console.error('Erro ao atualizar link do tutorial:', error);
+      throw error;
     }
   };
 
@@ -276,27 +290,55 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
                       <Card key={task.id} className="p-4 hover:shadow-md transition-shadow">
                         <div className="space-y-3">
                           <div className="flex items-start justify-between">
-                            <h3 className="font-semibold text-lg flex-1">{task.name}</h3>
-                            {isManager && (
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditTask(task)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setDeleteConfirm(task)}
-                                  className="h-8 w-8 p-0 text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            )}
+                            <h3 
+                              className="font-semibold text-lg flex-1 cursor-pointer hover:text-primary transition-colors"
+                              onClick={() => setViewTask(task)}
+                              title="Clique para ver detalhes"
+                            >
+                              {task.name}
+                            </h3>
+                            <div className="flex gap-1">
+                              {/* Botão de visualização - visível para todos */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewTask(task);
+                                }}
+                                className="h-8 w-8 p-0"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  backdropFilter: 'blur(8px)',
+                                  WebkitBackdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  color: 'rgba(59, 130, 246, 0.7)',
+                                }}
+                                title="Ver detalhes"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {isManager && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditTask(task)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeleteConfirm(task)}
+                                    className="h-8 w-8 p-0 text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
 
                           {task.description && (
@@ -361,6 +403,24 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
           employees={employees}
         />
       )}
+
+      {/* Dialog de visualização */}
+      <ViewTaskDialog
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => { if (!open) setViewTask(null); }}
+        onUpdateTutorialLink={handleUpdateTutorialLink}
+        canEditTutorialLink={true}
+      />
+
+      {/* Dialog de visualização */}
+      <ViewTaskDialog
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => { if (!open) setViewTask(null); }}
+        onUpdateTutorialLink={handleUpdateTutorialLink}
+        canEditTutorialLink={true}
+      />
 
       {/* Dialog de confirmação de exclusão */}
       {deleteConfirm && (

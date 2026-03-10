@@ -93,12 +93,12 @@ export const taskController = {
           throw new AppError(403, 'Sem permissão para alterar esta tarefa');
         }
 
-        // Funcionário só pode mudar status e reason
-        const allowedFields = ['status', 'reason'];
+        // Funcionário pode mudar status, reason e tutorialLink
+        const allowedFields = ['status', 'reason', 'tutorialLink'];
         const bodyKeys = Object.keys(req.body);
         const forbidden = bodyKeys.filter(k => !allowedFields.includes(k));
         if (forbidden.length > 0) {
-          throw new AppError(403, `Funcionários só podem alterar status e motivo. Campos não permitidos: ${forbidden.join(', ')}`);
+          throw new AppError(403, `Funcionários só podem alterar status, motivo e link do tutorial. Campos não permitidos: ${forbidden.join(', ')}`);
         }
       }
 
