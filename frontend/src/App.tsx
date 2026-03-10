@@ -96,6 +96,8 @@ const TaskApp: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('all'); // Filtro por usuário para gestores
   const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
   const filterSectionRef = useRef<HTMLDivElement>(null);
+  const [showCongratulations, setShowCongratulations] = useState(false);
+  const congratulationsShownRef = useRef<Set<string>>(new Set()); // Para não repetir no mesmo dia
 
   const toggleRoleCollapsed = useCallback((roleKey: string) => {
     setCollapsedRoles((prev) => {
@@ -295,6 +297,53 @@ const TaskApp: React.FC = () => {
   const filteredActiveTasks = isManager && selectedUserId !== 'all'
     ? activeTasks.filter(t => t.assignedToId === parseInt(selectedUserId))
     : activeTasks;
+
+  // Verificar se todas as tarefas estão concluídas
+  useEffect(() => {
+    if (loading || !tasks.length) {
+      setShowCongratulations(false);
+      return;
+    }
+
+    // Filtrar tarefas do usuário atual (não gestor vê só as suas, gestor vê todas se não filtrado)
+    const userTasks = isManager && selectedUserId !== 'all'
+      ? tasks.filter(t => t.assignedToId === parseInt(selectedUserId))
+      : isManager
+      ? tasks
+      : tasks.filter(t => t.assignedToId === user?.id);
+
+    // Verificar se há tarefas ativas (não concluídas e não executadas)
+    const hasActiveTasks = userTasks.some(t => !isTerminalStatus(t.status));
+
+    // Se não há tarefas ativas e há pelo menos uma tarefa
+    if (!hasActiveTasks && userTasks.length > 0) {
+      const today = new Date().toDateString();
+      const key = `${today}-${user?.id || 'all'}-${selectedUserId}`;
+
+      // Só mostrar se ainda não foi mostrado hoje
+      if (!congratulationsShownRef.current.has(key)) {
+        setShowCongratulations(true);
+        congratulationsShownRef.current.add(key);
+
+        // Enviar notificação do navegador
+        if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+          try {
+            const notification = new window.Notification('🎉 Parabéns!', {
+              body: 'Todas as suas tarefas foram concluídas! Excelente trabalho!',
+              icon: '/favicon.ico',
+              tag: 'all-tasks-completed',
+              requireInteraction: false,
+            });
+            setTimeout(() => notification.close(), 5000);
+          } catch (error) {
+            console.error('Erro ao enviar notificação:', error);
+          }
+        }
+      }
+    } else {
+      setShowCongratulations(false);
+    }
+  }, [tasks, loading, isManager, selectedUserId, user?.id, isTerminalStatus]);
 
   // Agrupar por role e depois por usuário (se gestor)
   let groupedTasks: Array<{ roleLabel: string; role: string | null; users: Array<{ userLabel: string; userId: string | null; tasks: Task[] }> }> = [];
@@ -668,8 +717,40 @@ const TaskApp: React.FC = () => {
             </div>
           )}
 
+          {/* Mensagem de congratulação quando todas as tarefas estão concluídas */}
+          {showCongratulations && activeTasks.length === 0 && (
+            <div className="mb-6 rounded-xl border-2 border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 p-6 shadow-lg">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white">
+                    <CheckCircle2 className="h-10 w-10" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-green-800 mb-2">
+                    🎉 Parabéns!
+                  </h3>
+                  <p className="text-lg text-green-700 mb-1">
+                    Todas as suas tarefas foram concluídas!
+                  </p>
+                  <p className="text-sm text-green-600">
+                    Excelente trabalho! Você está em dia com todas as suas responsabilidades.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowCongratulations(false)}
+                  className="flex-shrink-0 text-green-700 hover:text-green-900 hover:bg-green-100"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Estado vazio: sem tarefas ativas (nem com filtro) */}
-          {activeTasks.length === 0 && (
+          {activeTasks.length === 0 && !showCongratulations && (
             <div className="py-16 flex flex-col items-center justify-center gap-4 text-center">
               <CheckCircle2 className="w-12 h-12 text-green-500/60" />
               <h3 className="text-xl font-bold text-foreground">

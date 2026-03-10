@@ -336,6 +336,7 @@ export function useNotifications() {
     checkOverdueTasks,
     checkOverdueAlerts,
     checkPendingRequests,
+    sendNotification,
     isSupported,
     permission,
   };
