@@ -1,17 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { auditService } from './audit.service.js';
 import { isManagerRole } from '../middleware/auth.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Helper para obter o caminho do arquivo de log
-function getLogPath(): string {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const projectRoot = path.resolve(__dirname, '../../..');
-  return path.join(projectRoot, '.cursor', 'debug.log');
-}
 
 const ACTIVE_STATUSES = ['pending', 'in-progress', 'waiting', 'not-executed'];
 const SYSTEM_USER_ID = 1; // ID do sistema para auditoria automática
@@ -611,18 +600,6 @@ export const overdueService = {
    */
   async resetCompletedRecurringTasks(): Promise<number> {
     try {
-      // #region agent log
-      const logPath = getLogPath();
-      const logEntry = JSON.stringify({
-        location: 'overdue.service.ts:601',
-        message: 'resetCompletedRecurringTasks chamado',
-        data: { timestamp: new Date().toISOString() },
-        timestamp: Date.now(),
-        runId: 'run4',
-        hypothesisId: 'G'
-      }) + '\n';
-      fs.appendFileSync(logPath, logEntry, 'utf8');
-      // #endregion
       // Buscar todas as tarefas recorrentes concluídas
       const completedRecurringTasks = await prisma.task.findMany({
         where: {
@@ -636,18 +613,6 @@ export const overdueService = {
         },
       });
 
-      // #region agent log
-      const logEntry2 = JSON.stringify({
-        location: 'overdue.service.ts:614',
-        message: 'Tarefas recorrentes concluídas encontradas',
-        data: { count: completedRecurringTasks.length, taskIds: completedRecurringTasks.map(t => t.id) },
-        timestamp: Date.now(),
-        runId: 'run4',
-        hypothesisId: 'G'
-      }) + '\n';
-      fs.appendFileSync(logPath, logEntry2, 'utf8');
-      // #endregion
-
       if (completedRecurringTasks.length === 0) {
         return 0;
       }
@@ -659,44 +624,9 @@ export const overdueService = {
       const tomorrow = new Date(today);
       tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
-      // #region agent log
-      const logEntry3 = JSON.stringify({
-        location: 'overdue.service.ts:622',
-        message: 'Datas calculadas para verificação',
-        data: { today: today.toISOString(), tomorrow: tomorrow.toISOString(), now: now.toISOString() },
-        timestamp: Date.now(),
-        runId: 'run4',
-        hypothesisId: 'G'
-      }) + '\n';
-      fs.appendFileSync(logPath, logEntry3, 'utf8');
-      // #endregion
-
       for (const task of completedRecurringTasks) {
-        // #region agent log
-        const logEntry4 = JSON.stringify({
-          location: 'overdue.service.ts:626',
-          message: 'Verificando tarefa para reset',
-          data: { taskId: task.id, recurringDays: task.recurringDays, recurringDayOfMonth: task.recurringDayOfMonth },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'G'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry4, 'utf8');
-        // #endregion
         // Verificar se hoje é um dia de recorrência válido para esta tarefa
-        const isTodayRecurring = this.isTodayRecurringDay(task);
-        // #region agent log
-        const logEntry5 = JSON.stringify({
-          location: 'overdue.service.ts:628',
-          message: 'isTodayRecurringDay resultado',
-          data: { taskId: task.id, isTodayRecurring },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'G'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry5, 'utf8');
-        // #endregion
-        if (!isTodayRecurring) {
+        if (!this.isTodayRecurringDay(task)) {
           continue; // Se hoje não é dia de recorrência, não resetar
         }
 
@@ -712,46 +642,12 @@ export const overdueService = {
           },
         });
 
-        // #region agent log
-        const logEntry6 = JSON.stringify({
-          location: 'overdue.service.ts:634',
-          message: 'Verificação de TaskCompletion para hoje',
-          data: { taskId: task.id, completionToday: completionToday ? { id: completionToday.id, completedDate: completionToday.completedDate.toISOString() } : null },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'G'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry6, 'utf8');
-        // #endregion
-
         // Se foi completada hoje, não resetar (deve permanecer concluída até amanhã)
         if (completionToday) {
-          // #region agent log
-          const logEntry7 = JSON.stringify({
-            location: 'overdue.service.ts:645',
-            message: 'Tarefa completada hoje - NÃO resetar',
-            data: { taskId: task.id },
-            timestamp: Date.now(),
-            runId: 'run4',
-            hypothesisId: 'G'
-          }) + '\n';
-          fs.appendFileSync(logPath, logEntry7, 'utf8');
-          // #endregion
           continue;
         }
 
         // Se hoje é dia de recorrência E não foi completada hoje, resetar para pending
-        // #region agent log
-        const logEntry8 = JSON.stringify({
-          location: 'overdue.service.ts:649',
-          message: 'Resetando tarefa para pending',
-          data: { taskId: task.id, reason: 'Hoje é dia de recorrência e não foi completada hoje' },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'G'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry8, 'utf8');
-        // #endregion
         await prisma.task.update({
           where: { id: task.id },
           data: {

@@ -2,17 +2,6 @@ import { prisma } from '../config/prisma.js';
 import { CreateTaskInput, UpdateTaskInput } from '../schemas/task.schema.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { overdueService } from './overdue.service.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// Helper para obter o caminho do arquivo de log
-function getLogPath(): string {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const projectRoot = path.resolve(__dirname, '../../..');
-  return path.join(projectRoot, '.cursor', 'debug.log');
-}
 
 export const taskService = {
   /** Listar todas as tarefas (gestor) */
@@ -105,45 +94,7 @@ export const taskService = {
       const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
       
       try {
-        // #region agent log
-        const logPath = getLogPath();
-        const logEntry = JSON.stringify({
-          location: 'task.service.ts:98',
-          message: 'Criando TaskCompletion',
-          data: { taskId: id, userId, today: today.toISOString(), now: now.toISOString() },
-          timestamp: Date.now(),
-          runId: 'run3',
-          hypothesisId: 'F'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry, 'utf8');
-        // #endregion
         // Verificar se já existe conclusão para hoje antes de fazer upsert
-        // #region agent log
-        const logEntryCheck = JSON.stringify({
-          location: 'task.service.ts:121',
-          message: 'Verificando TaskCompletion existente',
-          data: { taskId: id, today: today.toISOString(), todayLocal: today.toString(), todayUTC: today.toUTCString() },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'H'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntryCheck, 'utf8');
-        // Verificar TODAS as TaskCompletions para esta tarefa para debug
-        const allCompletions = await prisma.taskCompletion.findMany({
-          where: { taskId: id },
-          orderBy: { completedDate: 'desc' },
-          take: 5,
-        });
-        const logEntryAll = JSON.stringify({
-          location: 'task.service.ts:122',
-          message: 'Todas as TaskCompletions para esta tarefa',
-          data: { taskId: id, count: allCompletions.length, completions: allCompletions.map(c => ({ id: c.id, completedDate: c.completedDate.toISOString(), completedAt: c.completedAt.toISOString() })) },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'H'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntryAll, 'utf8');
-        // #endregion
         const existingCompletion = await prisma.taskCompletion.findUnique({
           where: {
             taskId_completedDate: {
@@ -152,17 +103,6 @@ export const taskService = {
             },
           },
         });
-        // #region agent log
-        const logEntryFound = JSON.stringify({
-          location: 'task.service.ts:128',
-          message: 'Resultado do findUnique',
-          data: { taskId: id, found: existingCompletion !== null, existingCompletionId: existingCompletion?.id, existingCompletedDate: existingCompletion?.completedDate?.toISOString() },
-          timestamp: Date.now(),
-          runId: 'run4',
-          hypothesisId: 'H'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntryFound, 'utf8');
-        // #endregion
 
         if (existingCompletion) {
           // Atualizar se já existe
@@ -189,30 +129,7 @@ export const taskService = {
             },
           });
         }
-        // #region agent log
-        const logEntry2 = JSON.stringify({
-          location: 'task.service.ts:115',
-          message: 'TaskCompletion criado com sucesso',
-          data: { taskId: id },
-          timestamp: Date.now(),
-          runId: 'run3',
-          hypothesisId: 'F'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry2, 'utf8');
-        // #endregion
       } catch (error: any) {
-        // #region agent log
-        const logPath = getLogPath();
-        const logEntry = JSON.stringify({
-          location: 'task.service.ts:116',
-          message: 'Erro ao criar TaskCompletion',
-          data: { taskId: id, error: error.message, errorCode: error.code, errorMeta: error.meta },
-          timestamp: Date.now(),
-          runId: 'run3',
-          hypothesisId: 'F'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry, 'utf8');
-        // #endregion
         // Não lança o erro - permite que a tarefa seja atualizada mesmo se o histórico falhar
         // Loga o erro para debug em caso de problemas
         console.error(`Erro ao criar TaskCompletion para tarefa ${id}:`, error.message);
@@ -221,18 +138,6 @@ export const taskService = {
 
     try {
       console.log(`[TaskService.update] Atualizando tarefa ${id} no banco de dados`);
-      // #region agent log
-      const logPath = getLogPath();
-      const logEntry = JSON.stringify({
-        location: 'task.service.ts:161',
-        message: 'Antes de prisma.task.update',
-        data: { taskId: id, updateData: data, assignedToId: data.assignedToId, clearOverdue },
-        timestamp: Date.now(),
-        runId: 'run3',
-        hypothesisId: 'F'
-      }) + '\n';
-      fs.appendFileSync(logPath, logEntry, 'utf8');
-      // #endregion
       const result = await prisma.task.update({
         where: { id },
         data: {
@@ -271,31 +176,8 @@ export const taskService = {
           },
         },
       });
-      // #region agent log
-      const logEntry2 = JSON.stringify({
-        location: 'task.service.ts:199',
-        message: 'prisma.task.update sucesso',
-        data: { taskId: id, resultStatus: result.status },
-        timestamp: Date.now(),
-        runId: 'run3',
-        hypothesisId: 'F'
-      }) + '\n';
-      fs.appendFileSync(logPath, logEntry2, 'utf8');
-      // #endregion
       return result;
     } catch (error: any) {
-      // #region agent log
-      const logPath = getLogPath();
-      const logEntry = JSON.stringify({
-        location: 'task.service.ts:200',
-        message: 'Erro em prisma.task.update',
-        data: { taskId: id, error: error.message, errorCode: error.code, errorMeta: error.meta, errorStack: error.stack },
-        timestamp: Date.now(),
-        runId: 'run3',
-        hypothesisId: 'F'
-      }) + '\n';
-      fs.appendFileSync(logPath, logEntry, 'utf8');
-      // #endregion
       console.error(`[TaskService.update] Erro ao atualizar tarefa ${id}:`, {
         message: error.message,
         code: error.code,
