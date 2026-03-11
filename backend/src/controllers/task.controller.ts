@@ -78,7 +78,7 @@ export const taskController = {
 
   /**
    * PUT /tasks/:id
-   * Funcionário só pode mudar status (e reason) de tarefas atribuídas a ele.
+   * Funcionário pode mudar status, reason e tutorialLink de tarefas atribuídas a ele.
    * Gestor pode editar tudo.
    */
   async update(req: Request, res: Response, next: NextFunction) {

@@ -38,11 +38,14 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
 
     try {
       setSaving(true);
+      const newLink = tutorialLink.trim() || null;
       const data: UpdateTaskPayload = {
-        tutorialLink: tutorialLink.trim() || null,
+        tutorialLink: newLink,
       };
 
       await onUpdateTutorialLink(task.id, data);
+      // Atualizar o estado local com o valor salvo
+      setTutorialLink(newLink || '');
       setIsEditingTutorialLink(false);
     } catch {
       // erro tratado pelo hook
@@ -370,16 +373,16 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
               </div>
             ) : (
               <div>
-                {task.tutorialLink ? (
+                {tutorialLink ? (
                   <div className="space-y-2">
                     <a 
-                      href={task.tutorialLink.startsWith('http') ? task.tutorialLink : `https://${task.tutorialLink}`} 
+                      href={tutorialLink.startsWith('http') ? tutorialLink : `https://${tutorialLink}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
                     >
                       <LinkIcon className="w-3 h-3" />
-                      {task.tutorialLink}
+                      {tutorialLink}
                     </a>
                   </div>
                 ) : (
