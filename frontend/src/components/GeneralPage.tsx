@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Loader2, AlertCircle, CalendarDays, Clock, CheckCircle2, Filter, Repeat,
-  Eye, Pencil, Trash2, ArrowRight,
+  Eye, Pencil, Trash2, ArrowRight, ClipboardList,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi } from '@/services/api';
@@ -73,6 +73,19 @@ function formatRecurringDays(days: string | null | undefined): string {
   return days.split(',').map((d) => map[d] || d).join(', ');
 }
 
+function formatEstimatedTime(minutes: number | null | undefined): string {
+  if (!minutes) return '';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) {
+    return `${hours}h ${mins}min`;
+  } else if (hours > 0) {
+    return `${hours}h`;
+  } else {
+    return `${minutes}min`;
+  }
+}
+
 interface UserWithCount {
   id: number | null;
   name: string;
@@ -83,7 +96,7 @@ interface UserWithCount {
 const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const { isManager } = useAuth();
   // Esta página é apenas para managers (proteção no App.tsx)
-  const [mode, setMode] = useState<'completed' | 'active'>('completed');
+  const [mode, setMode] = useState<'completed' | 'active' | 'pending' | 'overdue'>('completed');
   const [view, setView] = useState<'users' | 'detail'>('users');
   const [selectedUser, setSelectedUser] = useState<UserWithCount | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -152,6 +165,38 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     }
   }, []);
 
+  const fetchPending = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await taskApi.getAll();
+      // Filtrar apenas tarefas pendentes: status === 'pending'
+      const pendingTasks = data.filter((task) => task.status === 'pending');
+      setTasks(pendingTasks);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar tarefas pendentes');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchOverdue = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await taskApi.getAll();
+      // Filtrar apenas tarefas atrasadas: isOverdue === true e status não é 'completed' ou 'not-executed'
+      const overdueTasks = data.filter(
+        (task) => task.isOverdue && task.status !== 'completed' && task.status !== 'not-executed'
+      );
+      setTasks(overdueTasks);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar tarefas atrasadas');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Carregar lista de funcionários (apenas managers acessam esta página)
     userApi.getAll().then(setEmployees).catch(() => {});
@@ -173,9 +218,15 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
       // Isso inclui tarefas concluídas que podem ter sido resetadas
       // Não depender de dateFrom/dateTo para evitar re-renders desnecessários
       fetchActive();
+    } else if (mode === 'pending') {
+      // Quando muda para 'pending', buscar apenas tarefas pendentes
+      fetchPending();
+    } else if (mode === 'overdue') {
+      // Quando muda para 'overdue', buscar apenas tarefas atrasadas
+      fetchOverdue();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, fetchCompleted, fetchActive]);
+  }, [mode, fetchCompleted, fetchActive, fetchPending, fetchOverdue]);
   
   // Buscar tarefas concluídas quando as datas mudarem (apenas no modo completed)
   useEffect(() => {
@@ -205,6 +256,20 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     return list;
   }, [tasks, employees]);
 
+  // Atualizar selectedUser quando as tarefas mudarem, mantendo a seleção se o usuário ainda existir
+  useEffect(() => {
+    if (selectedUser && view === 'detail') {
+      // Verificar se o usuário selecionado ainda existe na nova lista de usuários
+      const updatedUser = userListWithCounts.find((u) => u.id === selectedUser.id);
+      if (updatedUser) {
+        // Atualizar o selectedUser com os novos dados (especialmente taskCount)
+        setSelectedUser(updatedUser);
+      }
+      // Se o usuário não existir mais (não tem tarefas no novo modo), manter a seleção mesmo assim
+      // para que o admin possa ver que não há tarefas para esse usuário
+    }
+  }, [tasks, userListWithCounts, selectedUser, view]);
+
   const tasksForSelectedUser = useMemo(() => {
     if (!selectedUser) return [];
     // Retornar TODAS as tarefas do usuário selecionado, sem filtro de status ou data
@@ -224,6 +289,16 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     // No modo 'active' (Todas as tarefas), não aplicar filtro de data - mostrar todas
     // Incluir todas as tarefas, independente do status (pending, completed, etc.)
     if (mode === 'active') {
+      return tasksForSelectedUser;
+    }
+    
+    // No modo 'pending' (Tarefas pendentes), não aplicar filtro de data - mostrar todas as pendentes
+    if (mode === 'pending') {
+      return tasksForSelectedUser;
+    }
+    
+    // No modo 'overdue' (Tarefas atrasadas), não aplicar filtro de data - mostrar todas as atrasadas
+    if (mode === 'overdue') {
       return tasksForSelectedUser;
     }
     
@@ -247,8 +322,12 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     const map = new Map<string, Task[]>();
     // No modo 'completed', agrupar por data de atualização (quando foi concluída)
     // No modo 'active' (Todas as tarefas), agrupar por data de criação para mostrar todas as tarefas criadas
+    // No modo 'pending' (Tarefas pendentes), agrupar por data de deadline ou criação
+    // No modo 'overdue' (Tarefas atrasadas), agrupar por data de deadline ou criação
     const dateKey = mode === 'completed' 
       ? (t: Task) => new Date(t.updatedAt).toLocaleDateString('pt-BR')
+      : mode === 'pending' || mode === 'overdue'
+      ? (t: Task) => (t.deadline ? new Date(t.deadline).toLocaleDateString('pt-BR') : new Date(t.createdAt).toLocaleDateString('pt-BR'))
       : (t: Task) => new Date(t.createdAt).toLocaleDateString('pt-BR');
     for (const t of tasksFilteredByDate) {
       const key = dateKey(t);
@@ -270,6 +349,16 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
           const completed = await taskApi.getCompleted({ from: fromISO, to: toISO });
           setTasks(completed);
         }
+      } else if (mode === 'pending') {
+        const all = await taskApi.getAll();
+        const pendingTasks = all.filter((task) => task.status === 'pending');
+        setTasks(pendingTasks);
+      } else if (mode === 'overdue') {
+        const all = await taskApi.getAll();
+        const overdueTasks = all.filter(
+          (task) => task.isOverdue && task.status !== 'completed' && task.status !== 'not-executed'
+        );
+        setTasks(overdueTasks);
       } else {
         const all = await taskApi.getAll();
         setTasks(all);
@@ -288,6 +377,10 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
         await fetchCompleted(dateFrom, dateTo);
       } else if (mode === 'active') {
         await fetchActive();
+      } else if (mode === 'pending') {
+        await fetchPending();
+      } else if (mode === 'overdue') {
+        await fetchOverdue();
       }
       setEditTask(null);
     } catch (err) {
@@ -305,6 +398,10 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
         await fetchCompleted(dateFrom, dateTo);
       } else if (mode === 'active') {
         await fetchActive();
+      } else if (mode === 'pending') {
+        await fetchPending();
+      } else if (mode === 'overdue') {
+        await fetchOverdue();
       }
       setTransferTask(null);
     } catch (err) {
@@ -324,6 +421,10 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
         await fetchCompleted(dateFrom, dateTo);
       } else if (mode === 'active') {
         await fetchActive();
+      } else if (mode === 'pending') {
+        await fetchPending();
+      } else if (mode === 'overdue') {
+        await fetchOverdue();
       }
       setDeleteConfirm(null);
     } catch (err) {
@@ -339,6 +440,37 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
       <Header currentPage="general" onNavigate={handleNavigate} tasks={[]} />
 
       <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between pt-4 mb-6">
+          <div className="flex items-center gap-3">
+            <ClipboardList className="w-5 h-5 text-slate-700" />
+            <h2 className="text-lg font-bold text-foreground">Geral</h2>
+            <Badge 
+              variant="outline" 
+              className="font-bold" 
+              style={{ 
+                background: '#fff', 
+                border: mode === 'completed' 
+                  ? '2px solid rgb(34, 197, 94)' 
+                  : mode === 'active' 
+                  ? '2px solid rgb(59, 130, 246)' 
+                  : mode === 'pending'
+                  ? '2px solid rgb(234, 179, 8)' 
+                  : '2px solid rgb(220, 38, 38)', 
+                color: mode === 'completed' 
+                  ? 'rgb(22, 101, 52)' 
+                  : mode === 'active' 
+                  ? 'rgb(30, 64, 175)' 
+                  : mode === 'pending'
+                  ? 'rgb(161, 98, 7)' 
+                  : 'rgb(153, 27, 27)', 
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' 
+              }}
+            >
+              {mode === 'completed' ? 'Concluídas' : mode === 'active' ? 'Ativas' : mode === 'pending' ? 'Pendentes' : 'Atrasadas'}
+            </Badge>
+          </div>
+        </div>
+
         {error && (
           <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 mb-6">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -348,6 +480,52 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
         {view === 'users' && isManager && (
           <>
+            <Card className="mb-6" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
+              <CardContent className="pt-4 pb-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <span className="text-sm font-medium text-slate-600">Exibir:</span>
+                  <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setMode('completed')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'completed' ? 'bg-green-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Tarefas concluídas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode('active')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      Todas as tarefas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode('pending')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'pending' ? 'bg-yellow-500 text-white' : 'bg-white text-slate-600 hover:bg-yellow-50 hover:text-yellow-600'}`}
+                    >
+                      Tarefas pendentes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode('overdue')}
+                      className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'overdue' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 hover:bg-red-50 hover:text-red-600'}`}
+                    >
+                      Tarefas atrasadas
+                    </button>
+                  </div>
+                  {mode === 'completed' && (
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-slate-500 shrink-0" />
+                      <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="De" className="w-28" />
+                      <span className="text-slate-400">até</span>
+                      <DatePicker value={dateTo} onChange={setDateTo} placeholder="Até" className="w-28" />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {loading && (
               <div className="flex flex-col items-center justify-center gap-4 py-16">
                 <Loader2 className="w-10 h-10 animate-spin text-slate-600" />
@@ -393,7 +571,15 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
             {!loading && userListWithCounts.length === 0 && (
               <div className="text-center py-16">
-                <p className="text-slate-500 text-lg">Nenhum usuário com tarefas {mode === 'completed' ? 'concluídas' : ''} no período.</p>
+                <p className="text-slate-500 text-lg">
+                  {mode === 'completed' 
+                    ? 'Nenhum usuário com tarefas concluídas no período.' 
+                    : mode === 'pending'
+                    ? 'Nenhum usuário com tarefas pendentes.'
+                    : mode === 'overdue'
+                    ? 'Nenhum usuário com tarefas atrasadas.'
+                    : 'Nenhum usuário com tarefas.'}
+                </p>
               </div>
             )}
           </>
@@ -418,6 +604,20 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                     className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                   >
                     Todas as tarefas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('pending')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'pending' ? 'bg-yellow-500 text-white' : 'bg-white text-slate-600 hover:bg-yellow-50 hover:text-yellow-600'}`}
+                  >
+                    Tarefas pendentes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('overdue')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'overdue' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 hover:bg-red-50 hover:text-red-600'}`}
+                  >
+                    Tarefas atrasadas
                   </button>
                 </div>
               </div>
@@ -455,8 +655,8 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
             {!loading && (
               <div className="space-y-8">
-                {mode === 'active' ? (
-                // No modo 'active' (Todas as tarefas), exibir todas as tarefas sem agrupamento por data
+                {mode === 'active' || mode === 'pending' || mode === 'overdue' ? (
+                // No modo 'active' (Todas as tarefas), 'pending' (Tarefas pendentes) ou 'overdue' (Tarefas atrasadas), exibir todas as tarefas sem agrupamento por data
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
                   {tasksFilteredByDate.map((task) => {
                       const config = statusConfig[task.status];
@@ -594,6 +794,12 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                                   </Badge>
                                 )}
                               </div>
+                            )}
+                            {task.estimatedTime && (
+                              <Badge variant="secondary" className="text-xs" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                                <Clock className="w-3 h-3 inline mr-1" />
+                                {formatEstimatedTime(task.estimatedTime)}
+                              </Badge>
                             )}
                             <div className="flex-1" />
                             {task.deadline && (
@@ -754,6 +960,12 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                                   )}
                                 </div>
                               )}
+                              {task.estimatedTime && (
+                                <Badge variant="secondary" className="text-xs" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                                  <Clock className="w-3 h-3 inline mr-1" />
+                                  {formatEstimatedTime(task.estimatedTime)}
+                                </Badge>
+                              )}
                               <div className="flex-1" />
                               {task.reason && (
                                 <div className={`p-2 rounded-md text-xs ${config.bgLight} ${config.textColor}`}>
@@ -776,6 +988,18 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                 {mode === 'active' && tasksFilteredByDate.length === 0 && (
                   <div className="text-center py-16">
                     <p className="text-slate-500">Nenhuma tarefa encontrada.</p>
+                  </div>
+                )}
+
+                {mode === 'pending' && tasksFilteredByDate.length === 0 && (
+                  <div className="text-center py-16">
+                    <p className="text-slate-500">Nenhuma tarefa pendente encontrada.</p>
+                  </div>
+                )}
+
+                {mode === 'overdue' && tasksFilteredByDate.length === 0 && (
+                  <div className="text-center py-16">
+                    <p className="text-slate-500">Nenhuma tarefa atrasada encontrada.</p>
                   </div>
                 )}
 
