@@ -143,6 +143,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
       const data = await taskApi.getAll();
       // Mostrar TODAS as tarefas quando o modo for 'active' (Todas as tarefas)
       // Não filtrar por status - incluir todas: pending, in-progress, waiting, completed, not-executed
+      // Garantir que tarefas concluídas sejam incluídas
       setTasks(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar tarefas');
@@ -168,9 +169,20 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     if (mode === 'completed' && isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
       fetchCompleted(dateFrom, dateTo);
     } else if (mode === 'active') {
+      // Quando muda para 'active', garantir que busca todas as tarefas
+      // Isso inclui tarefas concluídas que podem ter sido resetadas
+      // Não depender de dateFrom/dateTo para evitar re-renders desnecessários
       fetchActive();
     }
-  }, [mode, dateFrom, dateTo, fetchCompleted, fetchActive]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, fetchCompleted, fetchActive]);
+  
+  // Buscar tarefas concluídas quando as datas mudarem (apenas no modo completed)
+  useEffect(() => {
+    if (mode === 'completed' && isValidBRDate(dateFrom) && isValidBRDate(dateTo)) {
+      fetchCompleted(dateFrom, dateTo);
+    }
+  }, [dateFrom, dateTo, mode, fetchCompleted]);
 
   const userListWithCounts = useMemo((): UserWithCount[] => {
     const byUser = new Map<number | null, Task[]>();
@@ -210,15 +222,23 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
   const tasksFilteredByDate = useMemo(() => {
     // No modo 'active' (Todas as tarefas), não aplicar filtro de data - mostrar todas
-    if (mode === 'active') return tasksForSelectedUser;
+    // Incluir todas as tarefas, independente do status (pending, completed, etc.)
+    if (mode === 'active') {
+      return tasksForSelectedUser;
+    }
     
     // No modo 'completed', aplicar filtro de data se as datas forem válidas
     if (!isValidBRDate(dateFrom) || !isValidBRDate(dateTo)) return tasksForSelectedUser;
-    const from = new Date(brToISO(dateFrom));
-    const to = new Date(brToISO(dateTo));
-    to.setHours(23, 59, 59, 999);
+    const fromParts = dateFrom.split('/');
+    const toParts = dateTo.split('/');
+    const from = new Date(parseInt(fromParts[2]), parseInt(fromParts[1]) - 1, parseInt(fromParts[0]), 0, 0, 0, 0);
+    const to = new Date(parseInt(toParts[2]), parseInt(toParts[1]) - 1, parseInt(toParts[0]), 23, 59, 59, 999);
     return tasksForSelectedUser.filter((t) => {
-      const d = t.deadline ? new Date(t.deadline) : new Date(t.updatedAt);
+      // Para tarefas concluídas, usar updatedAt (data de conclusão)
+      // Para outras, usar deadline se existir, senão updatedAt
+      const d = t.status === 'completed' 
+        ? new Date(t.updatedAt) 
+        : (t.deadline ? new Date(t.deadline) : new Date(t.updatedAt));
       return d >= from && d <= to;
     });
   }, [mode, dateFrom, dateTo, tasksForSelectedUser]);
@@ -461,15 +481,25 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
               </Card>
             )}
 
-            <div className="space-y-8">
-              {mode === 'active' ? (
+            {loading && (
+              <div className="flex flex-col items-center justify-center gap-4 py-16">
+                <Loader2 className="w-10 h-10 animate-spin text-slate-600" />
+                <p className="text-slate-500">Carregando...</p>
+              </div>
+            )}
+
+            {!loading && (
+              <div className="space-y-8">
+                {mode === 'active' ? (
                 // No modo 'active' (Todas as tarefas), exibir todas as tarefas sem agrupamento por data
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
                   {tasksFilteredByDate.map((task) => {
                       const config = statusConfig[task.status];
                       return (
                         <Card 
-                          key={task.id} 
+                          key={`task-${task.id}-${mode}`}
+                          data-task-id={task.id}
+                          data-task-status={task.status}
                           className="h-full flex flex-col transition-all duration-200 group" 
                           style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}
                           onMouseEnter={() => setHoveredCardId(task.id)}
@@ -777,17 +807,18 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                   </div>
                 ))
               )}
-            </div>
 
-            {mode === 'active' && tasksFilteredByDate.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-slate-500">Nenhuma tarefa encontrada.</p>
-              </div>
-            )}
+                {mode === 'active' && tasksFilteredByDate.length === 0 && (
+                  <div className="text-center py-16">
+                    <p className="text-slate-500">Nenhuma tarefa encontrada.</p>
+                  </div>
+                )}
 
-            {mode === 'completed' && groupedByDate.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-slate-500">Nenhuma tarefa neste período.</p>
+                {mode === 'completed' && groupedByDate.length === 0 && (
+                  <div className="text-center py-16">
+                    <p className="text-slate-500">Nenhuma tarefa neste período.</p>
+                  </div>
+                )}
               </div>
             )}
           </>

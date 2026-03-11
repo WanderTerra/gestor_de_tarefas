@@ -11,7 +11,9 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "reset:recurring": "tsx scripts/reset-recurring-tasks.ts",
+    "test:reset": "tsx scripts/test-reset-logic.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

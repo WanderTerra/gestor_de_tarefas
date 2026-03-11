@@ -91,14 +91,31 @@ export const taskService = {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      await prisma.taskCompletion.create({
-        data: {
-          taskId: id,
-          userId: userId ?? null,
-          completedAt: now,
-          completedDate: today, // Data normalizada para meia-noite
-        },
-      });
+      try {
+        // Usar upsert para evitar erro se já existe conclusão para hoje (constraint unique)
+        await prisma.taskCompletion.upsert({
+          where: {
+            taskId_completedDate: {
+              taskId: id,
+              completedDate: today,
+            },
+          },
+          update: {
+            completedAt: now, // Atualizar horário se já existe
+            userId: userId ?? null,
+          },
+          create: {
+            taskId: id,
+            userId: userId ?? null,
+            completedAt: now,
+            completedDate: today, // Data normalizada para meia-noite
+          },
+        });
+      } catch (error: any) {
+        // Não lança o erro - permite que a tarefa seja atualizada mesmo se o histórico falhar
+        // Loga o erro para debug em caso de problemas
+        console.error(`Erro ao criar TaskCompletion para tarefa ${id}:`, error.message);
+      }
     }
 
     return prisma.task.update({

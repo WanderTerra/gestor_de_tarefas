@@ -165,7 +165,7 @@ export const overdueService = {
           
           // Se tem dias da semana configurados, verificar se hoje é um deles
           if (t.recurringDays) {
-            const recurringDaysArray = t.recurringDays.split(',');
+            const recurringDaysArray = t.recurringDays.split(',').map(d => d.trim());
             if (!recurringDaysArray.includes(todayDayName)) {
               return false; // Hoje não é um dia de recorrência
             }
@@ -496,25 +496,16 @@ export const overdueService = {
     };
     const todayDayName = dayMap[todayDayOfWeek];
 
-    // Para tarefas mensais (com recurringDayOfMonth)
-    if (task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
-      // Verificar se hoje é o dia do mês especificado
-      if (todayDayOfMonth !== task.recurringDayOfMonth) {
-        return false;
-      }
-      // Se é o dia do mês, verificar também se hoje é um dos dias da semana configurados
-      if (task.recurringDays) {
-        const recurringDaysArray = task.recurringDays.split(',');
-        return recurringDaysArray.includes(todayDayName);
-      }
-      // Se não tem recurringDays mas tem recurringDayOfMonth, considerar válido se for o dia
-      return true;
+    // PRIORIDADE 1: Se tem recurringDays configurado, usar apenas os dias da semana
+    // O recurringDayOfMonth é apenas uma referência do primeiro dia, não uma restrição
+    if (task.recurringDays) {
+      const recurringDaysArray = task.recurringDays.split(',').map(d => d.trim());
+      return recurringDaysArray.includes(todayDayName);
     }
 
-    // Para tarefas semanais (sem recurringDayOfMonth)
-    if (task.recurringDays) {
-      const recurringDaysArray = task.recurringDays.split(',');
-      return recurringDaysArray.includes(todayDayName);
+    // PRIORIDADE 2: Se não tem recurringDays mas tem recurringDayOfMonth, usar o dia do mês
+    if (task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
+      return todayDayOfMonth === task.recurringDayOfMonth;
     }
 
     return false;
@@ -622,11 +613,22 @@ export const overdueService = {
         },
       });
 
+      if (completedRecurringTasks.length === 0) {
+        return 0;
+      }
+
       let resetCount = 0;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
       for (const task of completedRecurringTasks) {
+        // Verificar se hoje é um dia de recorrência válido para esta tarefa
+        if (!this.isTodayRecurringDay(task)) {
+          continue; // Se hoje não é dia de recorrência, não resetar
+        }
+
         // Verificar se a tarefa foi completada hoje usando a tabela de histórico
         // completedDate é DateTime normalizado para meia-noite, então comparamos diretamente
         const completionToday = await prisma.taskCompletion.findFirst({
@@ -634,31 +636,31 @@ export const overdueService = {
             taskId: task.id,
             completedDate: {
               gte: today, // maior ou igual a meia-noite de hoje
-              lt: new Date(today.getTime() + 24 * 60 * 60 * 1000), // menor que meia-noite de amanhã
+              lt: tomorrow, // menor que meia-noite de amanhã
             },
           },
         });
 
-        // Se foi completada hoje, não resetar
+        // Se foi completada hoje, não resetar (deve permanecer concluída até amanhã)
         if (completionToday) {
           continue;
         }
 
-        // Verificar se hoje é um dia de recorrência válido para esta tarefa
-        if (this.isTodayRecurringDay(task)) {
-          await prisma.task.update({
-            where: { id: task.id },
-            data: {
-              status: 'pending',
-              reason: null, // Limpar motivo ao resetar
-            },
-          });
-          resetCount++;
-        }
+        // Se hoje é dia de recorrência E não foi completada hoje, resetar para pending
+        await prisma.task.update({
+          where: { id: task.id },
+          data: {
+            status: 'pending',
+            reason: null, // Limpar motivo ao resetar
+          },
+        });
+        resetCount++;
       }
 
       if (resetCount > 0) {
         console.log(`🔄 ${resetCount} tarefa(s) recorrente(s) resetada(s) de "completed" para "pending" (hoje é dia de recorrência).`);
+      } else if (completedRecurringTasks.length > 0) {
+        console.log(`ℹ️ ${completedRecurringTasks.length} tarefa(s) recorrente(s) concluída(s) encontrada(s), mas nenhuma foi resetada (não é dia de recorrência ou foi completada hoje).`);
       }
 
       return resetCount;

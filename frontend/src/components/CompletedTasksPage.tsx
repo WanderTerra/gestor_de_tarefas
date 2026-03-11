@@ -50,6 +50,13 @@ function todayBR(): string {
   return `${day}/${month}/${year}`;
 }
 
+/** Retorna data de 7 dias atrás no formato brasileiro (dd/mm/aaaa) */
+function lastWeekBR(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 7); // 7 dias atrás
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 /** Converte formato brasileiro (dd/mm/aaaa) para ISO (aaaa-mm-dd) */
 function brToISO(brDate: string): string {
   const parts = brDate.split('/');
@@ -114,8 +121,8 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
     });
   }, []);
 
-  // Filtro de datas — default: hoje (formato brasileiro)
-  const [dateFrom, setDateFrom] = useState(() => todayBR());
+  // Filtro de datas — default: última semana (formato brasileiro)
+  const [dateFrom, setDateFrom] = useState(() => lastWeekBR());
   const [dateTo, setDateTo] = useState(() => todayBR());
 
   const fetchCompleted = useCallback(async (fromBR: string, toBR: string) => {
