@@ -144,14 +144,19 @@ export const taskService = {
           stack: error.stack,
           taskId: id,
           userId,
+          errorName: error.name,
         });
+        // Se o erro for porque o modelo não existe no Prisma Client, avisar
+        if (error.message && (error.message.includes('taskCompletion') || error.message.includes('TaskCompletion'))) {
+          console.error(`[TaskService.update] AVISO: Prisma Client pode não ter sido regenerado. Execute: npx prisma generate`);
+        }
       }
       }
 
       try {
         console.log(`[TaskService.update] Atualizando tarefa ${id} no banco de dados`);
         const result = await prisma.task.update({
-        where: { id },
+          where: { id },
         data: {
           ...(data.name !== undefined && { name: data.name }),
           ...(data.description !== undefined && { description: data.description }),
