@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle, UserPlus, X, Filter, Eye } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, UserPlus, X, Filter, Eye, Pencil, Save } from 'lucide-react';
 import { User, UserRole, getRoleLabel, isManagerRole } from '@/types/user';
 import { userApi, taskApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
@@ -34,6 +34,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewUser, setViewUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterName, setFilterName] = useState('');
@@ -44,6 +45,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>('backoffice');
+  
+  // View/Edit user state
+  const [editUsername, setEditUsername] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState<string>('backoffice');
+  const [editPassword, setEditPassword] = useState('');
+  const [isEditingUser, setIsEditingUser] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -112,8 +120,51 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
       setError(null);
       const updated = await userApi.update(user.id, { active: !user.active });
       setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
+      if (viewUser && viewUser.id === user.id) {
+        setViewUser(updated);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao atualizar usuário');
+    }
+  };
+
+  const handleViewUser = (user: User) => {
+    setViewUser(user);
+    setEditUsername(user.username);
+    setEditName(user.name);
+    setEditRole(user.role);
+    setEditPassword('');
+    setIsEditingUser(false);
+  };
+
+  const handleSaveUser = async () => {
+    if (!viewUser) return;
+    if (!editUsername.trim() || !editName.trim()) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+      const updateData: any = {
+        name: editName.trim(),
+        role: editRole,
+      };
+      
+      // Só atualizar senha se foi preenchida
+      if (editPassword.trim()) {
+        updateData.password = editPassword.trim();
+      }
+
+      const updated = await userApi.update(viewUser.id, updateData);
+      setUsers(prev => prev.map(u => u.id === viewUser.id ? updated : u));
+      setViewUser(updated);
+      setIsEditingUser(false);
+      setEditPassword('');
+    } catch (err) {
+      setError(err instanceof ApiError
+        ? err.details ? err.details.map(d => d.mensagem).join(', ') : err.message
+        : 'Erro ao atualizar usuário');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -457,11 +508,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (onNavigate) {
-                            onNavigate('tasks', user.id);
-                          } else {
-                            onBack();
-                          }
+                          handleViewUser(user);
                         }}
                         className="w-full"
                         style={{
@@ -583,6 +630,177 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
           )}
         </div>
       </div>
+
+      {/* Modal de Visualização/Edição de Usuário */}
+      <Dialog open={!!viewUser} onOpenChange={(open) => { if (!open) setViewUser(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditingUser ? 'Editar Usuário' : 'Detalhes do Usuário'}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditingUser ? 'Edite as informações do usuário' : 'Visualize e gerencie as informações do usuário'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewUser && (
+            <div className="space-y-4 pt-4">
+              {/* Username */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Username</label>
+                {isEditingUser ? (
+                  <Input
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    disabled
+                    className="bg-slate-50"
+                  />
+                ) : (
+                  <div className="px-3 py-2 rounded-md border bg-slate-50 text-sm">
+                    {viewUser.username}
+                  </div>
+                )}
+              </div>
+
+              {/* Nome */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nome</label>
+                {isEditingUser ? (
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Nome completo"
+                  />
+                ) : (
+                  <div className="px-3 py-2 rounded-md border bg-slate-50 text-sm">
+                    {viewUser.name}
+                  </div>
+                )}
+              </div>
+
+              {/* Role */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Função</label>
+                {isEditingUser ? (
+                  <Select value={editRole} onValueChange={setEditRole}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {getRoleLabel(r)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="px-3 py-2 rounded-md border bg-slate-50 text-sm">
+                    {getRoleLabel(viewUser.role)}
+                  </div>
+                )}
+              </div>
+
+              {/* Senha (só ao editar) */}
+              {isEditingUser && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nova Senha (opcional)</label>
+                  <Input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Deixe em branco para manter a senha atual"
+                  />
+                </div>
+              )}
+
+              {/* Status */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <div className="flex items-center gap-2">
+                  <Badge variant={viewUser.active ? 'default' : 'secondary'}>
+                    {viewUser.active ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                  {!isEditingUser && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleActive(viewUser)}
+                    >
+                      {viewUser.active ? 'Desativar' : 'Ativar'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Contagem de tarefas */}
+              {userTaskCounts[viewUser.id] !== undefined && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tarefas</label>
+                  <div className="px-3 py-2 rounded-md border bg-slate-50 text-sm">
+                    {userTaskCounts[viewUser.id]} {userTaskCounts[viewUser.id] === 1 ? 'tarefa' : 'tarefas'}
+                  </div>
+                </div>
+              )}
+
+              {/* Botões de ação */}
+              <div className="flex gap-2 pt-4 border-t">
+                {isEditingUser ? (
+                  <>
+                    <Button
+                      onClick={handleSaveUser}
+                      disabled={saving || !editName.trim() || !editUsername.trim()}
+                      className="flex-1"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Salvar
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingUser(false);
+                        setEditUsername(viewUser.username);
+                        setEditName(viewUser.name);
+                        setEditRole(viewUser.role);
+                        setEditPassword('');
+                      }}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => setIsEditingUser(true)}
+                      className="flex-1"
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setViewUser(null)}
+                      className="flex-1"
+                    >
+                      Fechar
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
