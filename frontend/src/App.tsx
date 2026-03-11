@@ -595,7 +595,7 @@ const TaskApp: React.FC = () => {
 
   if (page === 'users') return <UserManagement onBack={() => setPage('tasks')} onNavigate={handleNavigate} />;
   if (page === 'audit') return <AuditLogView onBack={() => setPage('tasks')} onNavigate={setPage} />;
-  if (page === 'general') return <GeneralPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
+  if (page === 'general') return <GeneralPage onBack={() => setPage('tasks')} onNavigate={handleNavigate} />;
   if (page === 'all-tasks') return <AllTasksPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'authorization-requests') return <AuthorizationRequestsPage onBack={() => setPage('tasks')} onNavigate={setPage} />;
 

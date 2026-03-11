@@ -21,7 +21,7 @@ type Page = 'tasks' | 'users' | 'audit' | 'general' | 'all-tasks' | 'authorizati
 
 interface GeneralPageProps {
   onBack: () => void;
-  onNavigate?: (page: Page) => void;
+  onNavigate?: (page: Page, userId?: number) => void;
 }
 
 const getStatusColorRGB = (status: TaskStatus): string => {
@@ -99,10 +99,26 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
-  const handleNavigate = (navPage: Page) => {
-    if (navPage === 'general') return;
-    onNavigate?.(navPage) ?? onBack();
-  };
+  const handleNavigate = useCallback((navPage: Page) => {
+    if (navPage === 'general') {
+      // Se já está na página geral, resetar para a view de usuários
+      setView('users');
+      setSelectedUser(null);
+      return;
+    }
+    
+    // IMPORTANTE: chamar onNavigate PRIMEIRO, antes de resetar o estado
+    // Isso garante que a navegação aconteça imediatamente
+    if (onNavigate) {
+      onNavigate(navPage);
+    } else {
+      onBack();
+    }
+    
+    // Resetar estado interno após iniciar a navegação
+    setView('users');
+    setSelectedUser(null);
+  }, [onNavigate, onBack]);
 
   const fetchCompleted = useCallback(async (fromBR: string, toBR: string) => {
     const fromISO = brToISO(fromBR);
