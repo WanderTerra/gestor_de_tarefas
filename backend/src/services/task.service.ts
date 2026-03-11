@@ -70,12 +70,10 @@ export const taskService = {
 
   async update(id: number, data: UpdateTaskInput & { assignedToId?: number | null }, userId?: number) {
     try {
-      console.log(`[TaskService.update] Iniciando atualização da tarefa ${id}`, { data, userId });
       // Verificar se existe
       const existingTask = await taskService.findById(id);
       const wasCompleted = existingTask.status === 'completed';
       const willBeCompleted = data.status === 'completed';
-      console.log(`[TaskService.update] Status atual: ${existingTask.status}, novo status: ${data.status}`);
 
       // Se status não requer motivo, limpar reason
       const statusRequiresReason = data.status && ['waiting', 'not-executed'].includes(data.status);
@@ -96,16 +94,14 @@ export const taskService = {
         
         try {
           // Verificar se já existe conclusão para hoje antes de fazer upsert
-          console.log(`[TaskService.update] Verificando TaskCompletion para tarefa ${id}, data: ${today.toISOString()}`);
           const existingCompletion = await prisma.taskCompletion.findUnique({
-          where: {
-            taskId_completedDate: {
-              taskId: id,
-              completedDate: today,
+            where: {
+              taskId_completedDate: {
+                taskId: id,
+                completedDate: today,
+              },
             },
-          },
-        });
-        console.log(`[TaskService.update] TaskCompletion encontrado: ${existingCompletion ? 'sim' : 'não'}`);
+          });
 
         if (existingCompletion) {
           // Atualizar se já existe
@@ -121,7 +117,6 @@ export const taskService = {
               userId: userId ?? null,
             },
           });
-          console.log(`[TaskService.update] TaskCompletion atualizado para tarefa ${id}`);
         } else {
           // Criar se não existe
           await prisma.taskCompletion.create({
@@ -132,29 +127,15 @@ export const taskService = {
               completedDate: today,
             },
           });
-          console.log(`[TaskService.update] TaskCompletion criado para tarefa ${id}`);
         }
       } catch (error: any) {
         // Não lança o erro - permite que a tarefa seja atualizada mesmo se o histórico falhar
-        // Loga o erro para debug em caso de problemas
-        console.error(`[TaskService.update] Erro ao criar TaskCompletion para tarefa ${id}:`, {
-          message: error.message,
-          code: error.code,
-          meta: error.meta,
-          stack: error.stack,
-          taskId: id,
-          userId,
-          errorName: error.name,
-        });
-        // Se o erro for porque o modelo não existe no Prisma Client, avisar
-        if (error.message && (error.message.includes('taskCompletion') || error.message.includes('TaskCompletion'))) {
-          console.error(`[TaskService.update] AVISO: Prisma Client pode não ter sido regenerado. Execute: npx prisma generate`);
-        }
+        // Loga o erro apenas se for crítico
+        console.error(`[TaskService.update] Erro ao criar TaskCompletion para tarefa ${id}:`, error.message);
       }
       }
 
       try {
-        console.log(`[TaskService.update] Atualizando tarefa ${id} no banco de dados`);
         const result = await prisma.task.update({
           where: { id },
         data: {
@@ -195,25 +176,11 @@ export const taskService = {
         });
         return result;
       } catch (error: any) {
-        console.error(`[TaskService.update] Erro ao atualizar tarefa ${id} no prisma.task.update:`, {
-          message: error.message,
-          code: error.code,
-          meta: error.meta,
-          stack: error.stack,
-          data,
-          userId,
-        });
+        console.error(`[TaskService.update] Erro ao atualizar tarefa ${id}:`, error.message);
         throw error;
       }
     } catch (outerError: any) {
-      console.error(`[TaskService.update] Erro externo ao atualizar tarefa ${id}:`, {
-        message: outerError.message,
-        code: outerError.code,
-        meta: outerError.meta,
-        stack: outerError.stack,
-        data,
-        userId,
-      });
+      console.error(`[TaskService.update] Erro ao atualizar tarefa ${id}:`, outerError.message);
       throw outerError;
     }
   },
