@@ -394,6 +394,7 @@ export const auditApi = {
     entity?: string;
     entityId?: number;
     userId?: number;
+    action?: string;
     limit?: number;
     offset?: number;
   }): Promise<AuditResponse> {
@@ -401,6 +402,7 @@ export const auditApi = {
     if (params?.entity) searchParams.set('entity', params.entity);
     if (params?.entityId) searchParams.set('entityId', String(params.entityId));
     if (params?.userId) searchParams.set('userId', String(params.userId));
+    if (params?.action) searchParams.set('action', params.action);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
 

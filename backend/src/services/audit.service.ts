@@ -27,6 +27,7 @@ export const auditService = {
     entity?: string;
     entityId?: number;
     userId?: number;
+    action?: string;
     limit?: number;
     offset?: number;
   }) {
@@ -35,6 +36,7 @@ export const auditService = {
     if (filters?.entity) where.entity = filters.entity;
     if (filters?.entityId) where.entityId = filters.entityId;
     if (filters?.userId) where.userId = filters.userId;
+    if (filters?.action) where.action = filters.action;
 
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({

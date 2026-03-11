@@ -111,10 +111,10 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
         <div className="space-y-4 pt-4">
           {/* Status */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
+            <label className="text-sm font-medium block">Status</label>
             <Badge
               variant="outline"
-              className="text-sm font-bold"
+              className="text-sm font-bold mt-1 ml-2"
               style={{
                 background: `rgba(${statusColorRGB}, 0.15)`,
                 border: `2px solid rgb(${statusColorRGB})`,

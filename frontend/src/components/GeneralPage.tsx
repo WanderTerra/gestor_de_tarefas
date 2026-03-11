@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Loader2, AlertCircle, CalendarDays, Clock, CheckCircle2, Filter, Repeat,
-  Eye, ClipboardList, Pencil, Trash2, ArrowRight,
+  Eye, Pencil, Trash2, ArrowRight,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi } from '@/services/api';
@@ -339,16 +339,6 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
       <Header currentPage="general" onNavigate={handleNavigate} tasks={[]} />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between pt-4 mb-6">
-          <div className="flex items-center gap-3">
-            <ClipboardList className="w-5 h-5 text-slate-700" />
-            <h2 className="text-lg font-bold text-foreground">Geral</h2>
-            <Badge variant="outline" className="font-bold" style={{ background: '#fff', border: '2px solid rgb(34, 197, 94)', color: 'rgb(22, 101, 52)', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' }}>
-              {mode === 'completed' ? 'Concluídas' : 'Ativas'}
-            </Badge>
-          </div>
-        </div>
-
         {error && (
           <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 mb-6">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -358,38 +348,6 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
         {view === 'users' && isManager && (
           <>
-            <Card className="mb-6" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className="text-sm font-medium text-slate-600">Exibir:</span>
-                  <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setMode('completed')}
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'completed' ? 'bg-green-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      Tarefas concluídas
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode('active')}
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      Todas as tarefas
-                    </button>
-                  </div>
-                  {mode === 'completed' && (
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4 text-slate-500 shrink-0" />
-                      <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="De" className="w-28" />
-                      <span className="text-slate-400">até</span>
-                      <DatePicker value={dateTo} onChange={setDateTo} placeholder="Até" className="w-28" />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
             {loading && (
               <div className="flex flex-col items-center justify-center gap-4 py-16">
                 <Loader2 className="w-10 h-10 animate-spin text-slate-600" />
@@ -400,22 +358,29 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
             {!loading && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {userListWithCounts.map((u) => (
-                  <Card key={u.id ?? 'unassigned'} className="h-full flex flex-col" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}>
-                    <CardHeader className="pb-3">
+                  <Card
+                    key={u.id ?? 'unassigned'}
+                    className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-md"
+                    style={{ background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                  >
+                    <CardHeader className="pb-2 pt-4 px-4">
                       <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base font-semibold line-clamp-2 flex-1">{u.name}</CardTitle>
-                        <Badge variant="outline" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                        <CardTitle className="text-base font-semibold leading-tight line-clamp-2 flex-1 text-slate-800">
+                          {u.name}
+                        </CardTitle>
+                        <Badge variant="outline" className="shrink-0 text-xs" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}>
                           {u.role === 'unassigned' ? 'Sem atribuição' : getRoleLabel(u.role)}
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="flex-1 flex flex-col space-y-3">
-                      <p className="text-sm text-slate-600">{u.taskCount} tarefa{u.taskCount !== 1 ? 's' : ''}</p>
-                      <div className="flex-1" />
+                    <CardContent className="flex-1 flex flex-col pt-0 px-4 pb-4">
+                      <p className="text-sm text-slate-600 mb-3">{u.taskCount} tarefa{u.taskCount !== 1 ? 's' : ''}</p>
+                      <div className="flex-1 min-h-2" />
                       <Button
                         onClick={() => { setSelectedUser(u); setView('detail'); }}
-                        className="w-full gap-2"
-                        style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
                       >
                         <Eye className="w-4 h-4" />
                         Visualizar

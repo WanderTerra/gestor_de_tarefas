@@ -216,9 +216,6 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
               <h1 className="text-lg font-bold text-slate-800 leading-tight tracking-tight group-hover:text-slate-900 transition-colors">
                 Gestor de Tarefas
               </h1>
-              <p className="text-[11px] text-slate-500 leading-none -mt-0.5">
-                Painel de controle
-              </p>
             </div>
             </button>
           </div>

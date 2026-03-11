@@ -9,6 +9,7 @@ import {
   Plus, Loader2, AlertCircle,
   CheckCircle2, Clock, Pencil, Trash2, ArrowRight,
   X, User as UserIcon, Repeat, Filter, Building2, ChevronDown, Eye,
+  LayoutGrid, List,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
 import { User, getRoleLabel } from '@/types/user';
@@ -99,6 +100,7 @@ const TaskApp: React.FC = () => {
   const [collapsedRoles, setCollapsedRoles] = useState<Set<string>>(new Set()); // Setores recolhidos (dropdown)
   const filterSectionRef = useRef<HTMLDivElement>(null);
   const [showCongratulations, setShowCongratulations] = useState(false);
+  const [taskViewMode, setTaskViewMode] = useState<'grid' | 'list'>('grid');
   const congratulationsShownRef = useRef<Set<string>>(new Set()); // Para não repetir no mesmo dia
 
   const toggleRoleCollapsed = useCallback((roleKey: string) => {
@@ -133,6 +135,12 @@ const TaskApp: React.FC = () => {
     }, 150);
     return () => clearTimeout(t);
   }, [selectedUserId, page]);
+
+  // Ao mudar a visualização (cards/lista), manter scroll no topo — instantâneo para não descer
+  useEffect(() => {
+    if (page !== 'tasks') return;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [taskViewMode, page]);
 
   const isTerminalStatus = useCallback(
     (status: TaskStatus) => status === 'completed' || status === 'not-executed',
@@ -593,6 +601,13 @@ const TaskApp: React.FC = () => {
     }
   }, [page, isManager]);
 
+  // Ao entrar na página de tarefas, sempre abrir no topo
+  useEffect(() => {
+    if (page === 'tasks') {
+      window.scrollTo(0, 0);
+    }
+  }, [page]);
+
   if (page === 'users') return <UserManagement onBack={() => setPage('tasks')} onNavigate={handleNavigate} />;
   if (page === 'audit') return <AuditLogView onBack={() => setPage('tasks')} onNavigate={setPage} />;
   if (page === 'general') return <GeneralPage onBack={() => setPage('tasks')} onNavigate={handleNavigate} />;
@@ -647,7 +662,31 @@ const TaskApp: React.FC = () => {
 
       {!loading && page === 'tasks' && (
         <div className="container mx-auto px-4 pt-6 pb-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between gap-4 h-[51px]">
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'auto' });
+                  setTaskViewMode('grid');
+                }}
+                className={`p-2 rounded-md transition-colors ${taskViewMode === 'grid' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+                title="Visualização em cards"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'auto' });
+                  setTaskViewMode('list');
+                }}
+                className={`p-2 rounded-md transition-colors ${taskViewMode === 'list' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+                title="Visualização em lista"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
                 <Button
                   size="default"
                   className="gap-2 transition-all duration-200 hover:scale-[1.02]"
@@ -870,7 +909,8 @@ const TaskApp: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Grid de cards */}
+                  {/* Grid de cards ou lista */}
+                  {taskViewMode === 'grid' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-fr items-stretch">
                     {userTasks.map((task) => {
                   const config = statusConfig[task.status as TaskStatus];
@@ -936,8 +976,8 @@ const TaskApp: React.FC = () => {
                       }}
                     >
                       {/* Faixa ATRASADO só quando atrasado; sem tarja o card não tem “testona” */}
-                      <div className="relative w-full flex-shrink-0 h-8">
                       {isTaskOverdue(task) && (
+                      <div className="relative w-full flex-shrink-0 h-8">
                           <div 
                             className="absolute inset-0 w-full flex items-center justify-center text-white font-bold tracking-wider text-xs pointer-events-none"
                             style={{ 
@@ -948,8 +988,8 @@ const TaskApp: React.FC = () => {
                           >
                             ATRASADO
                         </div>
-                      )}
                       </div>
+                      )}
 
                       <CardHeader className="pb-2 pt-3 space-y-2">
                         {/* Linha 1: Badge de status + botões (evita tag em cima do título) */}
@@ -1276,6 +1316,62 @@ const TaskApp: React.FC = () => {
               );
                 })}
                   </div>
+                  ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {userTasks.map((task) => {
+                      const config = statusConfig[task.status as TaskStatus];
+                      if (!config) return null;
+                      return (
+                        <div
+                          key={task.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setViewTask(task)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewTask(task); } }}
+                          className="flex items-center gap-3 py-2.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                          style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                        >
+                          <Badge
+                            variant="outline"
+                            className="text-xs shrink-0"
+                            style={{
+                              background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`,
+                              border: `2px solid rgb(${getStatusColorRGB(task.status)})`,
+                              color: `rgb(${getStatusColorRGB(task.status)})`,
+                            }}
+                          >
+                            {config.label}
+                          </Badge>
+                          {isTaskOverdue(task) && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 shrink-0">Atrasado</span>
+                          )}
+                          <span className="flex-1 min-w-0 font-medium text-slate-800 truncate">{task.name}</span>
+                          {task.assignedTo && isManager && (
+                            <span className="text-sm text-slate-600 truncate max-w-[140px] hidden sm:inline">{task.assignedTo.name}</span>
+                          )}
+                          {task.timeLimit && (
+                            <span className="text-sm text-slate-500 shrink-0 flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {task.timeLimit}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {isManager && (
+                              <>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setEditTask(task); }} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
+                                {isAdmin && (
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setTransferTask(task); }} title="Transferir"><ArrowRight className="h-3.5 w-3.5" /></Button>
+                                )}
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(task); }} title="Excluir"><Trash2 className="h-3.5 w-3.5" /></Button>
+                              </>
+                            )}
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setViewTask(task); }} title="Ver detalhes"><Eye className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  )}
                 </div>
               ))}
             </div>

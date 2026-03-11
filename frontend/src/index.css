@@ -123,6 +123,12 @@
   }
 }
 
+/* Evita que Select/Dropdown do Radix remova o scroll da página (data-scroll-locked) */
+html body[data-scroll-locked] {
+  overflow: visible !important;
+  margin-right: 0 !important;
+}
+
 /* Custom 3D card flip utilities */
 @layer utilities {
   .preserve-3d {

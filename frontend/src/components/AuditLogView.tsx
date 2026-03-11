@@ -1,10 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertCircle, ChevronLeft, ChevronRight, FileText, ChevronDown, ChevronUp, Clock, CalendarCheck, X } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronLeft, ChevronRight, FileText, Clock, CalendarCheck, X, RefreshCw, Filter } from 'lucide-react';
 import { AuditLog } from '@/types/user';
-import { auditApi, ApiError } from '@/services/api';
+import { auditApi, userApi, ApiError } from '@/services/api';
+import type { User } from '@/types/user';
 import Header from '@/components/Header';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface AuditLogViewProps {
   onBack: () => void;
@@ -17,6 +25,8 @@ const actionLabels: Record<string, { label: string; color: string }> = {
   delete: { label: 'Exclusão', color: 'bg-red-50 text-red-600 border-red-200' },
   status_change: { label: 'Status', color: 'bg-orange-50 text-orange-600 border-orange-200' },
   login: { label: 'Login', color: 'bg-purple-50 text-purple-600 border-purple-200' },
+  approve: { label: 'Aprovação', color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+  reject: { label: 'Rejeição', color: 'bg-red-50 text-red-600 border-red-200' },
   overdue_previous_day: { label: 'Atraso (Dia Anterior)', color: 'bg-slate-100/80 text-slate-700 border-slate-300/50' },
   overdue_time_limit: { label: 'Atraso (Horário)', color: 'bg-red-100/80 text-red-700 border-red-300/50' },
 };
@@ -24,13 +34,15 @@ const actionLabels: Record<string, { label: string; color: string }> = {
 /** Helper para obter cor RGB da ação para badges de vidro transparente (cores suaves/pastéis) */
 const getActionColorRGB = (action: string): string => {
   const colorMap: Record<string, string> = {
-    'create': '74, 222, 128',        // green-400 (mais suave)
-    'update': '96, 165, 250',        // blue-400 (mais suave)
-    'delete': '248, 113, 113',       // red-400 (mais suave)
-    'status_change': '251, 146, 60', // orange-400 (mais suave)
-    'login': '167, 139, 250',        // purple-400 (mais suave)
-    'overdue_previous_day': '148, 163, 184', // slate-400
-    'overdue_time_limit': '248, 113, 113',   // red-400 (mais suave)
+    'create': '74, 222, 128',
+    'update': '96, 165, 250',
+    'delete': '248, 113, 113',
+    'status_change': '251, 146, 60',
+    'login': '167, 139, 250',
+    'approve': '52, 211, 153',
+    'reject': '248, 113, 113',
+    'overdue_previous_day': '148, 163, 184',
+    'overdue_time_limit': '248, 113, 113',
   };
   return colorMap[action] || '148, 163, 184';
 };
@@ -127,6 +139,14 @@ function formatDetailText(log: AuditLog, details: Record<string, unknown> | null
       return `Criou o ${role} "${details.name || details.username || ''}"`;
     }
 
+    if (action === 'approve') {
+      return `Aprovou o usuário "${details.name || details.username || ''}"`;
+    }
+
+    if (action === 'reject') {
+      return `Rejeitou o usuário "${details.name || details.username || ''}"${details.reason ? `: ${details.reason}` : ''}`;
+    }
+
     if (action === 'update') {
       const changes = details.changes as string[] | undefined;
       if (changes && changes.length > 0) {
@@ -158,14 +178,24 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [showFullDetails, setShowFullDetails] = useState(false);
-  const pageSize = 20;
+  const [users, setUsers] = useState<User[]>([]);
+  const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [userIdFilter, setUserIdFilter] = useState<string>('all');
+  const [actionFilter, setActionFilter] = useState<string>('all');
+  const showFullDetails = false; // mantido para compatibilidade (não usado na lista unificada)
+  const pageSize = 25;
 
-  const fetchLogs = async (offset: number) => {
+  const fetchLogs = useCallback(async (offset: number) => {
     try {
       setLoading(true);
       setError(null);
-      const result = await auditApi.getAll({ limit: pageSize, offset });
+      const result = await auditApi.getAll({
+        limit: pageSize,
+        offset,
+        ...(entityFilter !== 'all' && { entity: entityFilter }),
+        ...(userIdFilter !== 'all' && { userId: Number(userIdFilter) }),
+        ...(actionFilter !== 'all' && { action: actionFilter }),
+      });
       setLogs(result.logs);
       setTotal(result.total);
     } catch (err) {
@@ -173,15 +203,19 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [entityFilter, userIdFilter, actionFilter]);
+
+  useEffect(() => {
+    userApi.getAll().then(setUsers).catch(() => setUsers([]));
+  }, []);
+
+  useEffect(() => {
+    setPage(0);
+  }, [entityFilter, userIdFilter, actionFilter]);
 
   useEffect(() => {
     fetchLogs(page * pageSize);
-  }, [page]);
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('pt-BR');
-  };
+  }, [page, fetchLogs]);
 
   const formatDateOnly = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('pt-BR', {
@@ -244,30 +278,77 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
-          {/* Título da página */}
-          <div className="flex items-center justify-between pt-4 mb-6">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-slate-700" />
-              <h2 className="text-lg font-bold text-foreground">
+          {/* Cabeçalho */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pt-4 mb-2">
+            <div>
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <FileText className="w-5 h-5 text-slate-700" />
                 Auditoria
               </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Histórico de ações no sistema (tarefas, usuários e acessos).
+              </p>
             </div>
-            <Badge 
-              variant="outline"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.6) 100%)',
-                backdropFilter: 'blur(12px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                border: '1px solid rgba(255, 255, 255, 0.5)',
-                color: 'rgba(0, 0, 0, 0.9)',
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
-                  0 2px 4px 0 rgba(0, 0, 0, 0.1)
-                `,
-              }}
-            >
-              {total} registro{total !== 1 ? 's' : ''}
-            </Badge>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Badge
+                variant="outline"
+                className="bg-white/80 backdrop-blur border-slate-200 text-slate-700"
+              >
+                {total} registro{total !== 1 ? 's' : ''}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchLogs(page * pageSize)}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </div>
+          </div>
+
+          {/* Filtros */}
+          <div
+            className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-slate-200 bg-white/80 backdrop-blur shadow-sm"
+          >
+            <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+            <Select value={entityFilter} onValueChange={setEntityFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Entidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as entidades</SelectItem>
+                <SelectItem value="task">Tarefa</SelectItem>
+                <SelectItem value="user">Usuário</SelectItem>
+                <SelectItem value="auth">Autenticação</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={actionFilter} onValueChange={setActionFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Ação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as ações</SelectItem>
+                {Object.entries(actionLabels).map(([key, { label }]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={userIdFilter} onValueChange={setUserIdFilter}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Usuário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os usuários</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    {u.name} (@{u.username})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Erro */}
@@ -287,276 +368,138 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
             </div>
           )}
 
-          {/* Seção destacada: Logs de atraso */}
-          {!loading && (() => {
-            const relevantLogs = logs.filter(log => 
-              log.action === 'overdue_previous_day' || log.action === 'overdue_time_limit'
-            );
-            const otherLogs = logs.filter(log => 
-              log.action !== 'overdue_previous_day' && log.action !== 'overdue_time_limit'
-            );
-
-            return (
-              <div className="space-y-6">
-                {/* Logs relevantes destacados - Agrupados por dia */}
-                {relevantLogs.length > 0 && (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <AlertCircle className="w-5 h-5 text-slate-700" />
-                      <h3 className="text-base font-bold text-slate-800">
-                        Atrasos e Pendências
-                      </h3>
-                      <Badge 
-                        variant="outline" 
-                        className="bg-white/20 border-white/30 text-slate-700"
-                        style={{
-                          backdropFilter: 'blur(10px)',
-                          WebkitBackdropFilter: 'blur(10px)',
-                        }}
-                      >
-                        {relevantLogs.length}
-                      </Badge>
+          {/* Lista unificada por data */}
+          {!loading && logs.length > 0 && (
+            <div className="space-y-6">
+              {groupLogsByDate(logs).map(([dateKey, dateLogs]) => (
+                <div key={dateKey} className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                      <CalendarCheck className="w-3.5 h-3.5" />
+                      {dateKey}
                     </div>
-
-                    {groupLogsByDate(relevantLogs).map(([dateKey, dateLogs]) => (
-                      <div key={dateKey} className="space-y-3">
-                        {/* Separador com data e contador */}
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
-                            style={{
-                              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)',
-                              backdropFilter: 'blur(12px) saturate(180%)',
-                              WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                              border: '1px solid rgba(255, 255, 255, 0.3)',
-                              color: 'rgba(0, 0, 0, 0.75)',
-                              boxShadow: `
-                                inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                                0 1px 2px 0 rgba(0, 0, 0, 0.05)
-                              `,
-                            }}
-                          >
-                            <CalendarCheck className="w-3.5 h-3.5" style={{ color: 'rgba(0, 0, 0, 0.7)' }} />
-                            {dateKey}
-                          </div>
-                          <div className="flex-1 h-px" style={{ background: 'rgba(0, 0, 0, 0.1)' }} />
-                          <span className="text-xs" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
-                            {dateLogs.length} evento{dateLogs.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-
-                        {/* Cards de logs do dia - Transparent Glass */}
-                        <div 
-                          className="rounded-xl overflow-hidden"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)',
-                            backdropFilter: 'blur(30px) saturate(180%)',
-                            WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            boxShadow: `
-                              inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
-                              0 0 0 1px rgba(255, 255, 255, 0.15),
-                              0 0 20px rgba(255, 255, 255, 0.08),
-                              0 8px 32px 0 rgba(0, 0, 0, 0.12),
-                              0 2px 8px 0 rgba(0, 0, 0, 0.08),
-                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.04)
-                            `,
-                          }}
-                        >
-                          {/* Lista de logs do dia */}
-                          <div className="divide-y divide-white/20">
-                            {dateLogs.map((log) => {
-                            const action = actionLabels[log.action] || { label: log.action, color: 'bg-gray-50 text-gray-600 border-gray-200' };
-                            const details = parseDetails(log.details);
-
-                            return (
-                              <div 
-                                key={log.id} 
-                                className="px-4 py-3 transition-all duration-200"
-                                style={{
-                                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
-                                  borderTop: '1px solid rgba(255, 255, 255, 0.15)',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)';
-                                }}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="flex-shrink-0 mt-1">
-                                    {log.action === 'overdue_previous_day' ? (
-                                      <Clock className="w-5 h-5 text-slate-700" />
-                                    ) : (
-                                      <AlertCircle className="w-5 h-5 text-red-600" />
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Badge 
-                                        variant="outline" 
-                                        className="text-xs"
-                                        style={{
-                                          background: `rgba(${getActionColorRGB(log.action)}, 0.12)`,
-                                          backdropFilter: 'blur(12px)',
-                                          WebkitBackdropFilter: 'blur(12px)',
-                                          border: `1px solid rgba(${getActionColorRGB(log.action)}, 0.25)`,
-                                          color: `rgba(${getActionColorRGB(log.action)}, 0.75)`,
-                                        }}
-                                      >
-                                        {action.label}
-                                      </Badge>
-                                      <span className="text-xs text-slate-500">
-                                        {formatTime(log.createdAt)}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm font-medium text-slate-800 mb-1">
-                                      {log.user.name} <span className="text-slate-500 text-xs">@{log.user.username}</span>
-                                    </p>
-                                    <p className="text-sm text-slate-700">
-                                      {formatDetailText(log, details)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <span className="text-xs text-slate-500">
+                      {dateLogs.length} evento{dateLogs.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
-                )}
 
-                {/* Botão para ver detalhamento completo */}
-                {otherLogs.length > 0 && (
-                  <div className="flex justify-center">
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden divide-y divide-slate-100">
+                    {dateLogs.map((log) => {
+                      const action = actionLabels[log.action] || { label: log.action, color: 'bg-gray-50 text-gray-600 border-gray-200' };
+                      const details = parseDetails(log.details);
+                      const isOverdue = log.action === 'overdue_previous_day' || log.action === 'overdue_time_limit';
+
+                      return (
+                        <div
+                          key={log.id}
+                          className="px-4 py-3 hover:bg-slate-50/80 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {log.action === 'login' && (
+                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                  <Clock className="w-4 h-4 text-purple-600" />
+                                </div>
+                              )}
+                              {isOverdue && (
+                                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                                  <AlertCircle className="w-4 h-4 text-red-600" />
+                                </div>
+                              )}
+                              {!log.action.includes('overdue') && log.action !== 'login' && (
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                                  style={{
+                                    background: `rgba(${getActionColorRGB(log.action)}, 0.15)`,
+                                  }}
+                                >
+                                  <FileText className="w-4 h-4" style={{ color: `rgb(${getActionColorRGB(log.action)})` }} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs font-medium"
+                                  style={{
+                                    background: `rgba(${getActionColorRGB(log.action)}, 0.12)`,
+                                    border: `1px solid rgba(${getActionColorRGB(log.action)}, 0.3)`,
+                                    color: `rgb(${getActionColorRGB(log.action)})`,
+                                  }}
+                                >
+                                  {action.label}
+                                </Badge>
+                                <span className="text-xs text-slate-400">
+                                  {entityLabels[log.entity] || log.entity}
+                                  {log.entityId != null && (
+                                    <span className="ml-1">#{log.entityId}</span>
+                                  )}
+                                </span>
+                                <span className="text-xs text-slate-400">
+                                  {formatTime(log.createdAt)}
+                                </span>
+                              </div>
+                              <p className="text-sm font-medium text-slate-800">
+                                {log.user.name}{' '}
+                                <span className="text-slate-500 font-normal text-xs">@{log.user.username}</span>
+                              </p>
+                              <p className="text-sm text-slate-600 mt-0.5">
+                                {formatDetailText(log, details)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-slate-200">
+                  <span className="text-sm text-slate-600">
+                    {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
+                  </span>
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => setShowFullDetails(!showFullDetails)}
-                      className="gap-2"
+                      size="sm"
+                      onClick={() => setPage((p) => p - 1)}
+                      disabled={page === 0}
                     >
-                      {showFullDetails ? (
-                        <>
-                          <ChevronUp className="w-4 h-4" />
-                          Ocultar detalhamento completo
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="w-4 h-4" />
-                          Ver detalhamento completo ({otherLogs.length} registro{otherLogs.length !== 1 ? 's' : ''})
-                        </>
-                      )}
+                      <ChevronLeft className="w-4 h-4" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= totalPages - 1}
+                    >
+                      Próxima
+                      <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
-                )}
+                </div>
+              )}
+            </div>
+          )}
 
-                {/* Tabela completa (oculta por padrão) */}
-                {showFullDetails && otherLogs.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="px-4 py-3 bg-slate-100 border-b">
-                      <h3 className="text-sm font-semibold text-slate-800">
-                        Detalhamento Completo
-                      </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left px-4 py-3 font-medium">Data/Hora</th>
-                            <th className="text-left px-4 py-3 font-medium">Usuário</th>
-                            <th className="text-left px-4 py-3 font-medium">Ação</th>
-                            <th className="text-left px-4 py-3 font-medium">Entidade</th>
-                            <th className="text-left px-4 py-3 font-medium">Detalhes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {otherLogs.map((log) => {
-                            const action = actionLabels[log.action] || { label: log.action, color: 'bg-gray-50 text-gray-600 border-gray-200' };
-                            const details = parseDetails(log.details);
-
-                            return (
-                              <tr key={log.id} className="hover:bg-muted/30">
-                                <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                                  {formatDate(log.createdAt)}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div>
-                                    <span className="font-medium">{log.user.name}</span>
-                                    <span className="text-muted-foreground ml-1 text-xs">@{log.user.username}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <Badge 
-                                    variant="outline"
-                                    style={{
-                                      background: `rgba(${getActionColorRGB(log.action)}, 0.12)`,
-                                      backdropFilter: 'blur(12px)',
-                                      WebkitBackdropFilter: 'blur(12px)',
-                                      border: `1px solid rgba(${getActionColorRGB(log.action)}, 0.25)`,
-                                      color: `rgba(${getActionColorRGB(log.action)}, 0.75)`,
-                                    }}
-                                  >
-                                    {action.label}
-                                  </Badge>
-                                </td>
-                                <td className="px-4 py-3">
-                                  {entityLabels[log.entity] || log.entity}
-                                  {log.entityId && <span className="text-muted-foreground ml-1">#{log.entityId}</span>}
-                                </td>
-                                <td className="px-4 py-3 max-w-sm text-muted-foreground">
-                                  {formatDetailText(log, details)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Paginação */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-sm text-muted-foreground">
-                      Página {page + 1} de {totalPages}
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => p - 1)}
-                        disabled={page === 0}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => p + 1)}
-                        disabled={page >= totalPages - 1}
-                      >
-                        Próxima
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Estado vazio */}
-                {logs.length === 0 && (
-                  <div className="text-center py-16">
-                    <p className="text-slate-500 text-lg">
-                      Nenhum registro de auditoria encontrado.
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          {/* Estado vazio */}
+          {!loading && logs.length === 0 && (
+            <div className="text-center py-16 rounded-xl border border-slate-200 bg-slate-50/50">
+              <FileText className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+              <p className="text-slate-600 font-medium">Nenhum registro de auditoria</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {entityFilter !== 'all' || userIdFilter !== 'all' || actionFilter !== 'all'
+                  ? 'Tente alterar os filtros para ver mais resultados.'
+                  : 'As ações no sistema aparecerão aqui.'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

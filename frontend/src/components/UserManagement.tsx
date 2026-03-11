@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Loader2, AlertCircle, UserPlus, X, Filter, Eye, Pencil, Save } from 'lucide-react';
-import { User, UserRole, getRoleLabel, isManagerRole } from '@/types/user';
+import { User, UserRole, getRoleLabel } from '@/types/user';
 import { userApi, taskApi, ApiError } from '@/services/api';
 import Header from '@/components/Header';
 
@@ -415,188 +415,58 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack, onNavigate }) =
             </div>
           )}
 
-          {/* Lista de usuários */}
+          {/* Lista de usuários (modelo lista) */}
           {!loading && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredUsers.map((user) => (
-                <Card 
-                  key={user.id} 
-                  className={`h-full flex flex-col transition-all duration-200 ${!user.active ? 'opacity-50' : ''}`}
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)',
-                    backdropFilter: 'blur(20px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    boxShadow: `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                      0 0 0 1px rgba(255, 255, 255, 0.2),
-                      0 0 15px rgba(255, 255, 255, 0.1),
-                      0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                    `,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-                      0 0 0 1px rgba(255, 255, 255, 0.3),
-                      0 0 20px rgba(255, 255, 255, 0.15),
-                      0 8px 24px 0 rgba(0, 0, 0, 0.12),
-                      0 2px 8px 0 rgba(0, 0, 0, 0.06),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.06)
-                    `;
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = `
-                      inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                      0 0 0 1px rgba(255, 255, 255, 0.2),
-                      0 0 15px rgba(255, 255, 255, 0.1),
-                      0 4px 16px 0 rgba(0, 0, 0, 0.08),
-                      0 1px 4px 0 rgba(0, 0, 0, 0.04),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.05)
-                    `;
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base font-semibold line-clamp-2 flex-1">{user.name}</CardTitle>
-                      <Badge 
-                        variant="outline" 
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(12px)',
-                          WebkitBackdropFilter: 'blur(12px)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: userTaskCounts[user.id] === 0 
-                            ? 'rgba(71, 85, 105, 0.6)'
-                            : isManagerRole(user.role)
-                            ? 'rgba(109, 40, 217, 0.6)' 
-                            : 'rgba(37, 99, 235, 0.6)',
-                          boxShadow: `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                            0 0 8px 0 ${userTaskCounts[user.id] === 0
-                              ? 'rgba(71, 85, 105, 0.15)'
-                              : isManagerRole(user.role)
-                              ? 'rgba(109, 40, 217, 0.15)' 
-                              : 'rgba(37, 99, 235, 0.15)'}
-                          `,
-                        }}
-                      >
-                        {userTaskCounts[user.id] === 0 ? 'Sem atribuição' : getRoleLabel(user.role)}
-                      </Badge>
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {filteredUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className={`flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors ${!user.active ? 'opacity-60' : ''}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800 truncate">{user.name}</p>
+                      <p className="text-sm text-slate-500 truncate">@{user.username}</p>
                     </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col space-y-3">
-                    <p className="text-sm text-slate-600">@{user.username}</p>
-                    {userTaskCounts[user.id] !== undefined && (
-                      <p className="text-sm text-slate-600">
-                        {userTaskCounts[user.id]} {userTaskCounts[user.id] === 1 ? 'tarefa' : 'tarefas'}
-                      </p>
-                    )}
-                    <div className="flex-1" />
-                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/50">
+                    <Badge variant="outline" className="shrink-0 text-xs bg-slate-50 border-slate-200 text-slate-700">
+                      {userTaskCounts[user.id] === 0 ? 'Sem atribuição' : getRoleLabel(user.role)}
+                    </Badge>
+                    <span className="text-sm text-slate-600 shrink-0">
+                      {userTaskCounts[user.id] ?? 0} {userTaskCounts[user.id] === 1 ? 'tarefa' : 'tarefas'}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 text-xs"
+                      style={{
+                        background: user.active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(148, 163, 184, 0.2)',
+                        border: user.active ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(148, 163, 184, 0.3)',
+                        color: user.active ? '#15803d' : '#64748b',
+                      }}
+                    >
+                      {user.active ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                    <div className="flex items-center gap-2 shrink-0">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleViewUser(user);
-                        }}
-                        className="w-full"
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(12px) saturate(180%)',
-                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: 'rgba(15, 23, 42, 0.8)',
-                          boxShadow: `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                            0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                          `,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                        }}
+                        onClick={() => handleViewUser(user)}
+                        className="gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-100"
                       >
-                        <Eye className="w-4 h-4 mr-2" />
+                        <Eye className="w-3.5 h-3.5" />
                         Visualizar
                       </Button>
-                      <div className="flex items-center justify-between">
-                      <Badge 
-                        variant="outline"
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(12px)',
-                          WebkitBackdropFilter: 'blur(12px)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: user.active ? 'rgba(22, 101, 52, 0.6)' : 'rgba(71, 85, 105, 0.6)',
-                          boxShadow: `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                            0 1px 4px 0 rgba(0, 0, 0, 0.06),
-                            0 0 8px 0 ${user.active 
-                              ? 'rgba(22, 101, 52, 0.15)' 
-                              : 'rgba(71, 85, 105, 0.15)'}
-                          `,
-                        }}
-                      >
-                        {user.active ? 'Ativo' : 'Inativo'}
-                      </Badge>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => toggleActive(user)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(12px) saturate(180%)',
-                          WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: 'rgba(15, 23, 42, 0.8)',
-                          boxShadow: `
-                            inset 0 1px 0 0 rgba(255, 255, 255, 0.4),
-                            inset 0 -1px 0 0 rgba(0, 0, 0, 0.12),
-                            inset 1px 0 0 0 rgba(255, 255, 255, 0.35),
-                            inset -1px 0 0 0 rgba(0, 0, 0, 0.1),
-                            0 2px 8px 0 rgba(0, 0, 0, 0.1),
-                            0 1px 4px 0 rgba(0, 0, 0, 0.06)
-                          `,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                          e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-                        }}
+                        className="gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-100"
                       >
                         {user.active ? 'Desativar' : 'Ativar'}
                       </Button>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

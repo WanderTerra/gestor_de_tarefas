@@ -11,6 +11,8 @@ export function useNotifications() {
   const { user, isManager } = useAuth();
   const previousTasksRef = useRef<Map<number, boolean>>(new Map());
   const previousAlertsRef = useRef<Set<number>>(new Set());
+  /** Na primeira execução só preenchemos o estado anterior, sem notificar (evita spam ao carregar a página). */
+  const hasInitializedOverdueCheckRef = useRef(false);
   
   // Usar estado para garantir que os valores sejam atualizados
   const [isSupported] = useState(() => {
@@ -146,6 +148,44 @@ export function useNotifications() {
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+      // Primeira execução: apenas preencher estado anterior, sem notificar (evita spam ao abrir a página)
+      if (!hasInitializedOverdueCheckRef.current) {
+        tasks.forEach((task) => {
+          if (task.status === 'completed') {
+            previousTasksRef.current.set(task.id, false);
+            return;
+          }
+          let currentIsOverdue = false;
+          if (task.deadline) {
+            try {
+              const deadlineDate = new Date(task.deadline);
+              deadlineDate.setHours(0, 0, 0, 0);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              if (deadlineDate.getTime() === today.getTime() && task.timeLimit) {
+                currentIsOverdue = task.timeLimit <= currentTime;
+              } else if (deadlineDate < today) {
+                currentIsOverdue = true;
+              }
+            } catch {
+              // ignore
+            }
+          } else if (task.isRecurring && task.recurringDayOfMonth != null && task.recurringDayOfMonth >= 1 && task.recurringDayOfMonth <= 31) {
+            const todayDay = now.getDate();
+            if (todayDay === task.recurringDayOfMonth && task.timeLimit) {
+              currentIsOverdue = task.timeLimit <= currentTime;
+            }
+          } else if (task.isRecurring && task.timeLimit) {
+            currentIsOverdue = task.timeLimit <= currentTime;
+          } else if (task.isOverdue) {
+            currentIsOverdue = true;
+          }
+          previousTasksRef.current.set(task.id, Boolean(currentIsOverdue));
+        });
+        hasInitializedOverdueCheckRef.current = true;
+        return;
+      }
+
       tasks.forEach((task) => {
         // Ignorar tarefas concluídas
         if (task.status === 'completed') {
@@ -202,25 +242,11 @@ export function useNotifications() {
           currentIsOverdue = true;
         }
 
-        // Se a tarefa acabou de ficar atrasada (mudou de false para true)
+        // Só notificar quando a tarefa ACABOU DE FICAR atrasada (transição false → true)
         if (!previousIsOverdue && currentIsOverdue) {
-          console.log('[Notifications] Tarefa ficou atrasada:', task.id, {
-            taskName: task.name,
-            timeLimit: task.timeLimit,
-            currentTime,
-            isOverdue: task.isOverdue,
-          });
-          
-          // Notificar o responsável pela tarefa OU administrador
           const shouldNotify = 
-            (task.assignedToId === user.id) || // É o responsável
-            (isManager); // É administrador
-
-          console.log('Deve notificar?', shouldNotify, {
-            assignedToId: task.assignedToId,
-            userId: user.id,
-            isManager,
-          });
+            (task.assignedToId === user.id) ||
+            (isManager);
 
           if (shouldNotify) {
             const taskName = task.name.length > 50 ? `${task.name.substring(0, 50)}...` : task.name;
@@ -228,15 +254,13 @@ export function useNotifications() {
               ? `Horário limite ultrapassado (${task.timeLimit})`
               : 'Tarefa pendente do dia anterior';
 
-            console.log('[Notifications] Enviando notificação...', { taskName, reason });
             sendNotification('Tarefa Atrasada', {
               body: `${taskName}\n${reason}`,
-              tag: `task-overdue-${task.id}`, // Evita duplicatas
+              tag: `task-overdue-${task.id}`,
             });
           }
         }
 
-        // Atualizar estado anterior
         previousTasksRef.current.set(task.id, Boolean(currentIsOverdue));
       });
     },

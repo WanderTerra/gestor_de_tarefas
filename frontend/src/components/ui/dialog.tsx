@@ -67,10 +67,8 @@ function DialogContent({
           className
         )}
         style={{
-          background: 'rgba(148, 163, 184, 0.25)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '3px solid #4b5563',
+          background: '#ffffff',
+          border: '1px solid rgba(0, 0, 0, 0.1)',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
         }}
         {...props}
