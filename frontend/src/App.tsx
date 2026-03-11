@@ -160,6 +160,20 @@ const TaskApp: React.FC = () => {
     return days.split(',').map(d => dayMap[d] || d).join(', ');
   };
 
+  /** Formata tempo estimado em minutos para formato legível */
+  const formatEstimatedTime = (minutes: number | null | undefined): string => {
+    if (!minutes) return '';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) {
+      return `${hours}h ${mins}min`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}min`;
+    }
+  };
+
   /** Verifica se uma tarefa está atrasada (horário limite ultrapassado OU flag isOverdue do backend) */
   const isTaskOverdue = useCallback(
     (task: Task): boolean => {
@@ -1163,6 +1177,23 @@ const TaskApp: React.FC = () => {
                               </Badge>
                             )}
                           </div>
+                        )}
+
+                        {/* Tempo estimado */}
+                        {task.estimatedTime && (
+                          <Badge
+                            variant="secondary"
+                            className="text-sm gap-1"
+                            style={{
+                              background: '#fff',
+                              border: '1px solid rgba(0, 0, 0, 0.1)',
+                              color: '#000',
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                            }}
+                          >
+                            <Clock className="w-3.5 h-3.5 shrink-0 inline mr-1 align-middle" />
+                            {formatEstimatedTime(task.estimatedTime)}
+                          </Badge>
                         )}
 
                         {/* Espaçador flexível */}

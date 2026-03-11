@@ -73,6 +73,19 @@ function formatRecurringDays(days: string | null | undefined): string {
   return days.split(',').map((d) => map[d] || d).join(', ');
 }
 
+function formatEstimatedTime(minutes: number | null | undefined): string {
+  if (!minutes) return '';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) {
+    return `${hours}h ${mins}min`;
+  } else if (hours > 0) {
+    return `${hours}h`;
+  } else {
+    return `${minutes}min`;
+  }
+}
+
 interface UserWithCount {
   id: number | null;
   name: string;
@@ -630,6 +643,12 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                                 )}
                               </div>
                             )}
+                            {task.estimatedTime && (
+                              <Badge variant="secondary" className="text-xs" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                                <Clock className="w-3 h-3 inline mr-1" />
+                                {formatEstimatedTime(task.estimatedTime)}
+                              </Badge>
+                            )}
                             <div className="flex-1" />
                             {task.deadline && (
                               <div className="text-sm text-muted-foreground pt-1 border-t border-border">
@@ -788,6 +807,12 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                                     </Badge>
                                   )}
                                 </div>
+                              )}
+                              {task.estimatedTime && (
+                                <Badge variant="secondary" className="text-xs" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', color: '#000' }}>
+                                  <Clock className="w-3 h-3 inline mr-1" />
+                                  {formatEstimatedTime(task.estimatedTime)}
+                                </Badge>
                               )}
                               <div className="flex-1" />
                               {task.reason && (

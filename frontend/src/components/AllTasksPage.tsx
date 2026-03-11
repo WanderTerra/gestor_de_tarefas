@@ -174,6 +174,20 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
     return statusConfig[status].label;
   };
 
+  /** Formata tempo estimado em minutos para formato legível */
+  const formatEstimatedTime = (minutes: number | null | undefined): string => {
+    if (!minutes) return '';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) {
+      return `${hours}h ${mins}min`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}min`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -369,6 +383,13 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
                           {task.timeLimit && (
                             <p className="text-xs text-muted-foreground">
                               Limite: {task.timeLimit}
+                            </p>
+                          )}
+
+                          {task.estimatedTime && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Tempo: {formatEstimatedTime(task.estimatedTime)}
                             </p>
                           )}
 
