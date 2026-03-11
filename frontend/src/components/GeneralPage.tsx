@@ -405,13 +405,28 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
         {view === 'detail' && selectedUser && (
           <>
-            <div className="flex items-center gap-4 mb-6">
-              <Button variant="outline" size="sm" onClick={handleBackFromDetail} className="gap-2" style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)' }}>
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </Button>
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-slate-600">Exibir:</span>
+                <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMode('completed')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'completed' ? 'bg-green-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    Tarefas concluídas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('active')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${mode === 'active' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    Todas as tarefas
+                  </button>
+                </div>
+              </div>
               <h3 className="text-base font-bold text-slate-800">
-                {mode === 'completed' ? 'Tarefas concluídas' : 'Todas as tarefas'} — {selectedUserName}
+                {selectedUserName}
               </h3>
             </div>
 

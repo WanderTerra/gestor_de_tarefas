@@ -202,14 +202,16 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
         {/* Cabeçalho */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={onBack}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar
-            </Button>
+            {isManager && (
+              <Button
+                variant="ghost"
+                onClick={onBack}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </Button>
+            )}
             <div>
               <h1 className="text-3xl font-bold text-foreground">Todas as Tarefas</h1>
               <p className="text-muted-foreground mt-1">
