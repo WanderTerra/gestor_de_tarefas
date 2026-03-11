@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Loader2, AlertCircle, CalendarDays, Clock, CheckCircle2, Filter, Repeat,
-  ArrowLeft, Eye, ClipboardList, Pencil, Trash2, ArrowRight,
+  Eye, ClipboardList, Pencil, Trash2, ArrowRight,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi } from '@/services/api';
@@ -221,11 +221,6 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
     }
     return Array.from(map.entries()).sort(([a], [b]) => new Date(b.split('/').reverse().join('-')).getTime() - new Date(a.split('/').reverse().join('-')).getTime());
   }, [tasksFilteredByDate, mode]);
-
-  const handleBackFromDetail = () => {
-    setSelectedUser(null);
-    setView('users');
-  };
 
   // Função para atualizar tarefa
   const handleUpdateTutorialLink = async (taskId: number, data: { tutorialLink?: string | null }) => {
