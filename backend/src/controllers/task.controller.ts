@@ -85,7 +85,9 @@ export const taskController = {
     try {
       const id = Number(req.params.id);
       const user = req.user!;
+      console.log(`[TaskController.update] Iniciando atualização da tarefa ${id} pelo usuário ${user.id} (${user.username})`);
       const existingTask = await taskService.findById(id);
+      console.log(`[TaskController.update] Tarefa ${id} encontrada:`, { status: existingTask.status, assignedToId: existingTask.assignedToId });
 
       if (!isManagerRole(user.role)) {
         // Verificar se a tarefa é dele
@@ -111,7 +113,9 @@ export const taskController = {
 
       // Remover assignedToId do data antes de passar para o service (será passado separadamente)
       const { assignedToId: _, ...taskData } = data;
+      console.log(`[TaskController.update] Chamando taskService.update para tarefa ${id}:`, { taskData, assignedToId, userId: user.id });
       const task = await taskService.update(id, { ...taskData, assignedToId }, user.id);
+      console.log(`[TaskController.update] Tarefa ${id} atualizada com sucesso`);
 
       // Auditoria
       const action = data.status && Object.keys(data).length === 1 
@@ -143,6 +147,15 @@ export const taskController = {
 
       res.json(task);
     } catch (err) {
+      console.error(`[TaskController.update] Erro ao atualizar tarefa ${req.params.id}:`, {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        ...(err as any).code && { code: (err as any).code },
+        ...(err as any).meta && { meta: (err as any).meta },
+        userId: req.user?.id,
+        username: req.user?.username,
+        body: req.body,
+      });
       next(err);
     }
   },

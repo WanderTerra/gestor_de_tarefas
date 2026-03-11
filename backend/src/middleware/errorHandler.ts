@@ -39,7 +39,13 @@ export function errorHandler(
   }
 
   // Erro inesperado
-  console.error('[ERROR]', err);
+  console.error('[ERROR] Erro 500:', {
+    message: err.message,
+    name: err.name,
+    stack: err.stack,
+    ...(err as any).code && { code: (err as any).code },
+    ...(err as any).meta && { meta: (err as any).meta },
+  });
   res.status(500).json({
     error: 'Erro interno do servidor',
     ...(env.NODE_ENV === 'development' && { stack: err.stack }),
