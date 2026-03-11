@@ -69,33 +69,35 @@ export const taskService = {
   },
 
   async update(id: number, data: UpdateTaskInput & { assignedToId?: number | null }, userId?: number) {
-    console.log(`[TaskService.update] Iniciando atualização da tarefa ${id}`, { data, userId });
-    // Verificar se existe
-    const existingTask = await taskService.findById(id);
-    const wasCompleted = existingTask.status === 'completed';
-    const willBeCompleted = data.status === 'completed';
-    console.log(`[TaskService.update] Status atual: ${existingTask.status}, novo status: ${data.status}`);
+    try {
+      console.log(`[TaskService.update] Iniciando atualização da tarefa ${id}`, { data, userId });
+      // Verificar se existe
+      const existingTask = await taskService.findById(id);
+      const wasCompleted = existingTask.status === 'completed';
+      const willBeCompleted = data.status === 'completed';
+      console.log(`[TaskService.update] Status atual: ${existingTask.status}, novo status: ${data.status}`);
 
-    // Se status não requer motivo, limpar reason
-    const statusRequiresReason = data.status && ['waiting', 'not-executed'].includes(data.status);
-    const reason = statusRequiresReason ? data.reason : (data.reason === undefined ? undefined : null);
+      // Se status não requer motivo, limpar reason
+      const statusRequiresReason = data.status && ['waiting', 'not-executed'].includes(data.status);
+      const reason = statusRequiresReason ? data.reason : (data.reason === undefined ? undefined : null);
 
-    // Se mudou status para finalizado, limpar isOverdue e resolver alertas
-    const clearOverdue = data.status === 'completed';
+      // Se mudou status para finalizado, limpar isOverdue e resolver alertas
+      const clearOverdue = data.status === 'completed';
 
-    if (clearOverdue) {
-      await overdueService.resolveByTask(id);
-    }
+      if (clearOverdue) {
+        await overdueService.resolveByTask(id);
+      }
 
-    // Registrar conclusão na tabela de histórico se a tarefa foi completada agora
-    if (!wasCompleted && willBeCompleted) {
-      const now = new Date();
-      // Criar data de hoje em UTC (meia-noite UTC) para evitar problemas de timezone
-      const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-      
-      try {
-        // Verificar se já existe conclusão para hoje antes de fazer upsert
-        const existingCompletion = await prisma.taskCompletion.findUnique({
+      // Registrar conclusão na tabela de histórico se a tarefa foi completada agora
+      if (!wasCompleted && willBeCompleted) {
+        const now = new Date();
+        // Criar data de hoje em UTC (meia-noite UTC) para evitar problemas de timezone
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+        
+        try {
+          // Verificar se já existe conclusão para hoje antes de fazer upsert
+          console.log(`[TaskService.update] Verificando TaskCompletion para tarefa ${id}, data: ${today.toISOString()}`);
+          const existingCompletion = await prisma.taskCompletion.findUnique({
           where: {
             taskId_completedDate: {
               taskId: id,
@@ -103,6 +105,7 @@ export const taskService = {
             },
           },
         });
+        console.log(`[TaskService.update] TaskCompletion encontrado: ${existingCompletion ? 'sim' : 'não'}`);
 
         if (existingCompletion) {
           // Atualizar se já existe
@@ -118,6 +121,7 @@ export const taskService = {
               userId: userId ?? null,
             },
           });
+          console.log(`[TaskService.update] TaskCompletion atualizado para tarefa ${id}`);
         } else {
           // Criar se não existe
           await prisma.taskCompletion.create({
@@ -128,17 +132,25 @@ export const taskService = {
               completedDate: today,
             },
           });
+          console.log(`[TaskService.update] TaskCompletion criado para tarefa ${id}`);
         }
       } catch (error: any) {
         // Não lança o erro - permite que a tarefa seja atualizada mesmo se o histórico falhar
         // Loga o erro para debug em caso de problemas
-        console.error(`Erro ao criar TaskCompletion para tarefa ${id}:`, error.message);
+        console.error(`[TaskService.update] Erro ao criar TaskCompletion para tarefa ${id}:`, {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          stack: error.stack,
+          taskId: id,
+          userId,
+        });
       }
-    }
+      }
 
-    try {
-      console.log(`[TaskService.update] Atualizando tarefa ${id} no banco de dados`);
-      const result = await prisma.task.update({
+      try {
+        console.log(`[TaskService.update] Atualizando tarefa ${id} no banco de dados`);
+        const result = await prisma.task.update({
         where: { id },
         data: {
           ...(data.name !== undefined && { name: data.name }),
@@ -175,18 +187,29 @@ export const taskService = {
             select: { id: true, username: true, name: true },
           },
         },
-      });
-      return result;
-    } catch (error: any) {
-      console.error(`[TaskService.update] Erro ao atualizar tarefa ${id}:`, {
-        message: error.message,
-        code: error.code,
-        meta: error.meta,
-        stack: error.stack,
+        });
+        return result;
+      } catch (error: any) {
+        console.error(`[TaskService.update] Erro ao atualizar tarefa ${id} no prisma.task.update:`, {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          stack: error.stack,
+          data,
+          userId,
+        });
+        throw error;
+      }
+    } catch (outerError: any) {
+      console.error(`[TaskService.update] Erro externo ao atualizar tarefa ${id}:`, {
+        message: outerError.message,
+        code: outerError.code,
+        meta: outerError.meta,
+        stack: outerError.stack,
         data,
         userId,
       });
-      throw error;
+      throw outerError;
     }
   },
 

@@ -45,7 +45,18 @@ export function errorHandler(
     stack: err.stack,
     ...(err as any).code && { code: (err as any).code },
     ...(err as any).meta && { meta: (err as any).meta },
+    ...(err as any).cause && { cause: (err as any).cause },
   });
+  
+  // Log adicional para erros do Prisma
+  if ((err as any).code && (err as any).code.startsWith('P')) {
+    console.error('[ERROR] Erro do Prisma:', {
+      code: (err as any).code,
+      meta: (err as any).meta,
+      clientVersion: (err as any).clientVersion,
+    });
+  }
+  
   res.status(500).json({
     error: 'Erro interno do servidor',
     ...(env.NODE_ENV === 'development' && { stack: err.stack }),
