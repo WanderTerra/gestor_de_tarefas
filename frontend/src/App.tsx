@@ -186,6 +186,85 @@ const TaskApp: React.FC = () => {
     }
   };
 
+  /** Calcula o tempo de atraso de uma tarefa em minutos (retorna 0 se não estiver atrasada) */
+  const calculateOverdueTime = useCallback((task: Task): number => {
+    // Tarefa concluída nunca está atrasada
+    if (task.status === 'completed') return 0;
+
+    const now = new Date();
+    const cgNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+    const currentTimeMinutes = cgNow.getHours() * 60 + cgNow.getMinutes();
+
+    // Se tem deadline, calcular atraso baseado na data
+    if (task.deadline) {
+      try {
+        const deadlineDate = new Date(task.deadline);
+        const cgToday = new Date(now.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+        const today = new Date(cgToday);
+        today.setHours(0, 0, 0, 0);
+        deadlineDate.setHours(0, 0, 0, 0);
+
+        // Se o deadline é hoje, calcular atraso baseado no horário
+        if (deadlineDate.getTime() === today.getTime() && task.timeLimit) {
+          const [limitHours, limitMinutes] = task.timeLimit.split(':').map(Number);
+          const limitTimeMinutes = limitHours * 60 + limitMinutes;
+          const overdueMinutes = currentTimeMinutes - limitTimeMinutes;
+          return overdueMinutes > 0 ? overdueMinutes : 0;
+        }
+
+        // Se o deadline já passou (dia anterior), calcular dias + horas
+        if (deadlineDate < today) {
+          const daysDiff = Math.floor((today.getTime() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (task.timeLimit) {
+            const [limitHours, limitMinutes] = task.timeLimit.split(':').map(Number);
+            const limitTimeMinutes = limitHours * 60 + limitMinutes;
+            const overdueMinutes = daysDiff * 24 * 60 + (currentTimeMinutes - limitTimeMinutes);
+            return overdueMinutes > 0 ? overdueMinutes : daysDiff * 24 * 60;
+          }
+          // Se não tem timeLimit, considerar apenas os dias
+          return daysDiff * 24 * 60;
+        }
+      } catch (err) {
+        console.error('Erro ao calcular atraso da tarefa:', task.id, err);
+        return 0;
+      }
+    }
+
+    // Para tarefas recorrentes com timeLimit, calcular atraso baseado no horário
+    if (task.isRecurring && task.timeLimit) {
+      // Verificar se é tarefa mensal e se hoje é o dia correto
+      if (task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
+        const todayDay = cgNow.getDate();
+        if (todayDay !== task.recurringDayOfMonth) return 0; // Não é o dia correto
+      }
+      
+      // Verificar se é tarefa semanal e se hoje é um dos dias configurados
+      if (task.recurringDays) {
+        const todayDayOfWeek = cgNow.getDay();
+        const dayMap: Record<number, string> = {
+          0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
+        };
+        const todayDayName = dayMap[todayDayOfWeek];
+        const recurringDaysArray = task.recurringDays.split(',');
+        if (!recurringDaysArray.includes(todayDayName)) return 0; // Hoje não é dia de recorrência
+      }
+      
+      // Se chegou aqui, é um dia válido de recorrência, calcular atraso
+      const [limitHours, limitMinutes] = task.timeLimit.split(':').map(Number);
+      const limitTimeMinutes = limitHours * 60 + limitMinutes;
+      const overdueMinutes = currentTimeMinutes - limitTimeMinutes;
+      return overdueMinutes > 0 ? overdueMinutes : 0;
+    }
+
+    // Se tem flag isOverdue mas não se encaixa nos casos acima, retornar um valor mínimo
+    // para que seja ordenada corretamente (mas só se realmente estiver atrasada)
+    if (task.isOverdue) {
+      return 1; // Valor mínimo para indicar que está atrasada
+    }
+
+    return 0;
+  }, []);
+
   /** Verifica se uma tarefa está atrasada (horário limite ultrapassado OU flag isOverdue do backend) */
   const isTaskOverdue = useCallback(
     (task: Task): boolean => {
@@ -315,6 +394,22 @@ const TaskApp: React.FC = () => {
     },
     [currentTime],
   );
+
+  /** Formata tempo de atraso em formato legível */
+  const formatOverdueTime = useCallback((minutes: number): string => {
+    if (minutes <= 0) return '';
+    
+    const days = Math.floor(minutes / (24 * 60));
+    const hours = Math.floor((minutes % (24 * 60)) / 60);
+    const mins = minutes % 60;
+    
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days} dia${days !== 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (mins > 0 && days === 0) parts.push(`${mins}min`); // Só mostra minutos se não tiver dias
+    
+    return parts.join(' ') || `${minutes}min`;
+  }, []);
 
   // Tarefas aparecem apenas se não tiverem status terminal OU se estiverem em animação de fade
   // Tarefas recorrentes concluídas serão resetadas automaticamente pelo backend para "pending"
@@ -449,7 +544,26 @@ const TaskApp: React.FC = () => {
       
       for (const [userKey, userTasks] of Object.entries(usersGroup)) {
         const [userId, userName] = userKey.split('|');
-        users.push({ userLabel: userName, userId, tasks: userTasks });
+        // Ordenar tarefas: primeiro as atrasadas (mais atrasada primeiro), depois as não atrasadas
+        const sortedTasks = [...userTasks].sort((a, b) => {
+          const aOverdue = isTaskOverdue(a);
+          const bOverdue = isTaskOverdue(b);
+          
+          // Se ambas estão atrasadas, ordenar por tempo de atraso (mais atrasada primeiro)
+          if (aOverdue && bOverdue) {
+            const aOverdueTime = calculateOverdueTime(a);
+            const bOverdueTime = calculateOverdueTime(b);
+            return bOverdueTime - aOverdueTime; // Ordem decrescente (mais atrasada primeiro)
+          }
+          
+          // Se apenas uma está atrasada, ela vem primeiro
+          if (aOverdue && !bOverdue) return -1;
+          if (!aOverdue && bOverdue) return 1;
+          
+          // Se nenhuma está atrasada, manter ordem original
+          return 0;
+        });
+        users.push({ userLabel: userName, userId, tasks: sortedTasks });
       }
       
       // Ordenar usuários: primeiro os com tarefas atrasadas, depois por nome
@@ -473,8 +587,26 @@ const TaskApp: React.FC = () => {
       return a.roleLabel.localeCompare(b.roleLabel);
     });
   } else {
-    // Para não-gestores, apenas lista as tarefas
-    groupedTasks.push({ roleLabel: '', role: null, users: [{ userLabel: '', userId: null, tasks: filteredActiveTasks }] });
+    // Para não-gestores, apenas lista as tarefas (ordenadas por atraso)
+    const sortedTasks = [...filteredActiveTasks].sort((a, b) => {
+      const aOverdue = isTaskOverdue(a);
+      const bOverdue = isTaskOverdue(b);
+      
+      // Se ambas estão atrasadas, ordenar por tempo de atraso (mais atrasada primeiro)
+      if (aOverdue && bOverdue) {
+        const aOverdueTime = calculateOverdueTime(a);
+        const bOverdueTime = calculateOverdueTime(b);
+        return bOverdueTime - aOverdueTime; // Ordem decrescente (mais atrasada primeiro)
+      }
+      
+      // Se apenas uma está atrasada, ela vem primeiro
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      
+      // Se nenhuma está atrasada, manter ordem original
+      return 0;
+    });
+    groupedTasks.push({ roleLabel: '', role: null, users: [{ userLabel: '', userId: null, tasks: sortedTasks }] });
   }
 
   useEffect(() => {
@@ -1095,21 +1227,30 @@ const TaskApp: React.FC = () => {
                         }
                       }}
                     >
-                      {/* Faixa ATRASADO só quando atrasado; sem tarja o card não tem “testona” */}
-                      {isTaskOverdue(task) && (
-                      <div className="relative w-full flex-shrink-0 h-8">
-                          <div 
-                            className="absolute inset-0 w-full flex items-center justify-center text-white font-bold tracking-wider text-xs pointer-events-none"
-                            style={{ 
-                              background: '#FF2C2C',
-                              borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
-                              letterSpacing: '0.15em',
-                            }}
-                          >
-                            ATRASADO
-                        </div>
-                      </div>
-                      )}
+                      {/* Faixa ATRASADO só quando atrasado; sem tarja o card não tem "testona" */}
+                      {isTaskOverdue(task) && (() => {
+                        const overdueTime = calculateOverdueTime(task);
+                        const overdueTimeFormatted = formatOverdueTime(overdueTime);
+                        return (
+                          <div className="relative w-full flex-shrink-0 h-8">
+                            <div 
+                              className="absolute inset-0 w-full flex items-center justify-between px-3 text-white font-bold tracking-wider text-xs pointer-events-none"
+                              style={{ 
+                                background: '#FF2C2C',
+                                borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                                letterSpacing: '0.15em',
+                              }}
+                            >
+                              <span>ATRASADO</span>
+                              {overdueTimeFormatted && (
+                                <span className="text-[10px] font-semibold opacity-90">
+                                  {overdueTimeFormatted}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       <CardHeader className="pb-2 pt-3 space-y-2">
                         {/* Linha 1: Badge de status + botões (evita tag em cima do título) */}
