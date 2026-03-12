@@ -34,13 +34,17 @@ export const createTaskSchema = z.object({
   { message: 'Motivo é obrigatório para este status', path: ['reason'] },
 ).refine(
   (data) => {
-    // Se é recorrente, deve ter pelo menos um dia selecionado
-    if (data.isRecurring && (!data.recurringDays || data.recurringDays.length === 0)) {
-      return false;
+    // Se é recorrente, deve ter pelo menos um dia selecionado (semanal OU mensal)
+    if (data.isRecurring) {
+      const hasWeeklyDays = data.recurringDays && data.recurringDays.length > 0;
+      const hasMonthlyDay = data.recurringDayOfMonth !== null && data.recurringDayOfMonth !== undefined;
+      if (!hasWeeklyDays && !hasMonthlyDay) {
+        return false;
+      }
     }
     return true;
   },
-  { message: 'Selecione pelo menos um dia para tarefas recorrentes', path: ['recurringDays'] },
+  { message: 'Selecione pelo menos um dia para tarefas recorrentes (semanal ou mensal)', path: ['recurringDays'] },
 );
 
 export const updateTaskSchema = z.object({
@@ -66,6 +70,19 @@ export const updateTaskSchema = z.object({
     return true;
   },
   { message: 'Motivo é obrigatório para este status', path: ['reason'] },
+).refine(
+  (data) => {
+    // Se é recorrente, deve ter pelo menos um dia selecionado (semanal OU mensal)
+    if (data.isRecurring !== undefined && data.isRecurring) {
+      const hasWeeklyDays = data.recurringDays && data.recurringDays.length > 0;
+      const hasMonthlyDay = data.recurringDayOfMonth !== null && data.recurringDayOfMonth !== undefined;
+      if (!hasWeeklyDays && !hasMonthlyDay) {
+        return false;
+      }
+    }
+    return true;
+  },
+  { message: 'Selecione pelo menos um dia para tarefas recorrentes (semanal ou mensal)', path: ['recurringDays'] },
 );
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

@@ -135,7 +135,8 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
     
     // Validar campos obrigatórios anteriores
     if (!timeLimit.trim()) return;
-    if (taskType === 'recurring' && selectedWeekdays.length === 0) return;
+    // Se é recorrente, deve ter OU dias da semana OU dia do mês
+    if (taskType === 'recurring' && selectedWeekdays.length === 0 && recurringDayOfMonth === null) return;
     if (taskType === 'single' && !selectedDate) return;
     
     // Tempo estimado é obrigatório
@@ -147,17 +148,22 @@ const CreateTaskWizard: React.FC<CreateTaskWizardProps> = ({
     const tutorialLinkValue = tutorialLink.trim() || undefined;
 
     if (taskType === 'recurring') {
-      // Lógica: se for um dia só do mês, excluir domingo dos dias da semana
-      let finalWeekdays = [...selectedWeekdays];
-      if (recurringDayOfMonth !== null) {
-        finalWeekdays = finalWeekdays.filter(day => day !== 'dom');
+      // Se for apenas mensal (sem dias da semana), enviar recurringDays como array vazio
+      // Se for semanal ou combinado, enviar os dias da semana
+      let finalWeekdays: string[] = [];
+      if (selectedWeekdays.length > 0) {
+        finalWeekdays = [...selectedWeekdays];
+        // Lógica: se for um dia só do mês, excluir domingo dos dias da semana
+        if (recurringDayOfMonth !== null) {
+          finalWeekdays = finalWeekdays.filter(day => day !== 'dom');
+        }
       }
 
       await onSave({
         name: taskName,
         description: taskDescription,
         isRecurring: true,
-        recurringDays: finalWeekdays, // Array de strings
+        recurringDays: finalWeekdays.length > 0 ? finalWeekdays : undefined, // Array de strings ou undefined
         recurringDayOfMonth: recurringDayOfMonth || undefined,
         timeLimit: timeLimit,
         estimatedTime: estimatedTimeMinutes,

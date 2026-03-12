@@ -313,9 +313,44 @@ const TaskApp: React.FC = () => {
 
   // Tarefas aparecem apenas se não tiverem status terminal OU se estiverem em animação de fade
   // Tarefas recorrentes concluídas serão resetadas automaticamente pelo backend para "pending"
-  const activeTasks = tasks.filter(
-    (t) => !isTerminalStatus(t.status) || fadingCards.has(t.id),
-  );
+  const activeTasks = tasks.filter((t) => {
+    // Filtrar por status terminal (permitir se estiver em animação de fade)
+    if (isTerminalStatus(t.status) && !fadingCards.has(t.id)) {
+      return false;
+    }
+    
+    // Para tarefas recorrentes mensais (com recurringDayOfMonth), verificar se hoje é o dia correto
+    if (t.isRecurring && 
+        t.recurringDayOfMonth !== null && 
+        t.recurringDayOfMonth !== undefined) {
+      const today = new Date();
+      const todayDay = today.getDate();
+      // Só mostrar se hoje for o dia do mês especificado
+      if (todayDay !== t.recurringDayOfMonth) {
+        return false;
+      }
+    }
+    
+    // Para tarefas recorrentes semanais (sem recurringDayOfMonth), verificar se hoje é um dos dias configurados
+    if (t.isRecurring && 
+        (t.recurringDayOfMonth === null || t.recurringDayOfMonth === undefined) &&
+        t.recurringDays) {
+      const today = new Date();
+      const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+      const dayMap: Record<number, string> = {
+        0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
+      };
+      const todayDayName = dayMap[todayDayOfWeek];
+      const recurringDaysArray = t.recurringDays.split(',').map(d => d.trim());
+      // Só mostrar se hoje for um dos dias da semana configurados
+      if (!recurringDaysArray.includes(todayDayName)) {
+        return false;
+      }
+    }
+    
+    // Para outras tarefas, mostrar normalmente
+    return true;
+  });
 
   // Filtrar tarefas por usuário (se gestor e filtro selecionado)
   const filteredActiveTasks = isManager && selectedUserId !== 'all'
