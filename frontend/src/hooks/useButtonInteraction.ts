@@ -37,9 +37,11 @@ export function useButtonInteraction(
   const isPressedRef = useRef(false);
 
   const createRipple = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const button = e.currentTarget;
+    if (!button) return;
     // Usar requestAnimationFrame para não bloquear a UI
     requestAnimationFrame(() => {
-      const button = e.currentTarget;
+      if (!button.isConnected) return;
       const rect = button.getBoundingClientRect();
       const size = Math.max(rect.width, rect.height);
       const x = e.clientX - rect.left - size / 2;
@@ -79,6 +81,7 @@ export function useButtonInteraction(
 
       // Remove o ripple após a animação
       setTimeout(() => {
+        if (!button.isConnected) return;
         ripple.remove();
         // Restaura position se não havia antes
         if (originalPosition === '') {
@@ -94,10 +97,11 @@ export function useButtonInteraction(
 
     isPressedRef.current = true;
     const button = e.currentTarget;
+    if (!button) return;
 
     // Usar requestAnimationFrame para operações DOM pesadas
     requestAnimationFrame(() => {
-      // Efeito de scale (compressão)
+      if (!button.isConnected) return;
       button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
       button.style.transform = `scale(${scaleOnClick})`;
     });
@@ -111,10 +115,11 @@ export function useButtonInteraction(
 
     isPressedRef.current = false;
     const button = e.currentTarget;
+    if (!button) return;
 
     // Usar requestAnimationFrame para operações DOM
     requestAnimationFrame(() => {
-      // Restaura scale
+      if (!button.isConnected) return;
       button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
       button.style.transform = 'scale(1)';
     });
@@ -125,10 +130,11 @@ export function useButtonInteraction(
 
     isPressedRef.current = false;
     const button = e.currentTarget;
+    if (!button) return;
 
     // Usar requestAnimationFrame para operações DOM
     requestAnimationFrame(() => {
-      // Restaura scale se o mouse sair enquanto pressionado
+      if (!button.isConnected) return;
       button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
       button.style.transform = 'scale(1)';
     });
