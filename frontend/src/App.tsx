@@ -502,20 +502,28 @@ const TaskApp: React.FC = () => {
     const config = statusConfig[newStatus];
     if (config?.requiresReason) {
       // Status que requer motivo: girar o card e pedir o motivo
-      setFlippedCard(taskId);
-      setFlippedCardStatus(newStatus);
-      setFlippedCardReason('');
+      // Deslocar atualizações de estado para não bloquear
+      requestAnimationFrame(() => {
+        setFlippedCard(taskId);
+        setFlippedCardStatus(newStatus);
+        setFlippedCardReason('');
+      });
     } else {
       // Status que não requer motivo: mudar diretamente
+      // Marcar como fading imediatamente para feedback visual
       setFadingCards((prev) => new Set(prev).add(taskId));
-      await changeStatus(taskId, newStatus);
-      setTimeout(() => {
-        setFadingCards((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(taskId);
-          return newSet;
-        });
-      }, 500);
+      
+      // Deslocar a chamada assíncrona para não bloquear o clique
+      setTimeout(async () => {
+        await changeStatus(taskId, newStatus);
+        setTimeout(() => {
+          setFadingCards((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(taskId);
+            return newSet;
+          });
+        }, 500);
+      }, 0);
     }
   }, [changeStatus]);
 
@@ -523,24 +531,31 @@ const TaskApp: React.FC = () => {
     if (!flippedCardReason.trim() || !flippedCardStatus) return;
     
     setSavingReason(true);
-    try {
-      setFadingCards((prev) => new Set(prev).add(taskId));
-      await changeStatus(taskId, flippedCardStatus, flippedCardReason.trim());
-      setFlippedCard(null);
-      setFlippedCardReason('');
-      setFlippedCardStatus(null);
-      setTimeout(() => {
-        setFadingCards((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(taskId);
-          return newSet;
+    // Marcar como fading imediatamente para feedback visual
+    setFadingCards((prev) => new Set(prev).add(taskId));
+    
+    // Deslocar operação assíncrona para não bloquear
+    setTimeout(async () => {
+      try {
+        await changeStatus(taskId, flippedCardStatus, flippedCardReason.trim());
+        requestAnimationFrame(() => {
+          setFlippedCard(null);
+          setFlippedCardReason('');
+          setFlippedCardStatus(null);
         });
-      }, 500);
-    } catch (err) {
-      console.error('Erro ao salvar motivo:', err);
-    } finally {
-      setSavingReason(false);
-    }
+        setTimeout(() => {
+          setFadingCards((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(taskId);
+            return newSet;
+          });
+        }, 500);
+      } catch (err) {
+        console.error('Erro ao salvar motivo:', err);
+      } finally {
+        setSavingReason(false);
+      }
+    }, 0);
   }, [flippedCardReason, flippedCardStatus, changeStatus]);
 
   const handleCancelReason = useCallback(() => {
@@ -681,8 +696,11 @@ const TaskApp: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  window.scrollTo({ top: 0, behavior: 'auto' });
-                  setTaskViewMode('grid');
+                  // Deslocar operações para não bloquear
+                  requestAnimationFrame(() => {
+                    window.scrollTo({ top: 0, behavior: 'auto' });
+                    setTaskViewMode('grid');
+                  });
                 }}
                 className={`p-2 rounded-md transition-colors ${taskViewMode === 'grid' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
                 title="Visualização em cards"
@@ -692,8 +710,11 @@ const TaskApp: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  window.scrollTo({ top: 0, behavior: 'auto' });
-                  setTaskViewMode('list');
+                  // Deslocar operações para não bloquear
+                  requestAnimationFrame(() => {
+                    window.scrollTo({ top: 0, behavior: 'auto' });
+                    setTaskViewMode('list');
+                  });
                 }}
                 className={`p-2 rounded-md transition-colors ${taskViewMode === 'list' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
                 title="Visualização em lista"
@@ -967,25 +988,31 @@ const TaskApp: React.FC = () => {
                       onMouseEnter={(e) => {
                         if (!isFlipped) {
                           setHoveredCardId(task.id);
-                          if (isTaskOverdue(task)) {
-                            e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)';
-                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-                          } else {
-                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
-                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-                          }
+                          // Usar requestAnimationFrame para manipulação de estilo
+                          requestAnimationFrame(() => {
+                            if (isTaskOverdue(task)) {
+                              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)';
+                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                            } else {
+                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
+                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                            }
+                          });
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!isFlipped) {
                           setHoveredCardId(null);
-                          if (isTaskOverdue(task)) {
-                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)';
-                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
-                          } else {
-                            e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.08)';
-                            e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
-                          }
+                          // Usar requestAnimationFrame para manipulação de estilo
+                          requestAnimationFrame(() => {
+                            if (isTaskOverdue(task)) {
+                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)';
+                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                            } else {
+                              e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.08)';
+                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                            }
+                          });
                         }
                       }}
                     >

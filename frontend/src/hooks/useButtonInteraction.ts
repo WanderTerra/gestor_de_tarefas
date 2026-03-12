@@ -37,53 +37,56 @@ export function useButtonInteraction(
   const isPressedRef = useRef(false);
 
   const createRipple = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    const button = e.currentTarget;
-    const rect = button.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    const x = e.clientX - rect.left - size / 2;
-    const y = e.clientY - rect.top - size / 2;
+    // Usar requestAnimationFrame para não bloquear a UI
+    requestAnimationFrame(() => {
+      const button = e.currentTarget;
+      const rect = button.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
 
-    // Remove ripple anterior se existir
-    const existingRipple = button.querySelector('.button-ripple');
-    if (existingRipple) {
-      existingRipple.remove();
-    }
-
-    // Cria novo ripple
-    const ripple = document.createElement('span');
-    ripple.className = 'button-ripple';
-    ripple.style.cssText = `
-      position: absolute;
-      width: ${size}px;
-      height: ${size}px;
-      left: ${x}px;
-      top: ${y}px;
-      border-radius: 50%;
-      background: ${rippleColor};
-      transform: scale(0);
-      animation: ripple-animation ${rippleDuration}ms ease-out;
-      pointer-events: none;
-      z-index: 1;
-    `;
-
-    // Garante que o botão tenha position relative
-    const originalPosition = button.style.position;
-    if (getComputedStyle(button).position === 'static') {
-      button.style.position = 'relative';
-      button.style.overflow = 'hidden';
-    }
-
-    button.appendChild(ripple);
-
-    // Remove o ripple após a animação
-    setTimeout(() => {
-      ripple.remove();
-      // Restaura position se não havia antes
-      if (originalPosition === '') {
-        button.style.position = '';
-        button.style.overflow = '';
+      // Remove ripple anterior se existir
+      const existingRipple = button.querySelector('.button-ripple');
+      if (existingRipple) {
+        existingRipple.remove();
       }
-    }, rippleDuration);
+
+      // Cria novo ripple
+      const ripple = document.createElement('span');
+      ripple.className = 'button-ripple';
+      ripple.style.cssText = `
+        position: absolute;
+        width: ${size}px;
+        height: ${size}px;
+        left: ${x}px;
+        top: ${y}px;
+        border-radius: 50%;
+        background: ${rippleColor};
+        transform: scale(0);
+        animation: ripple-animation ${rippleDuration}ms ease-out;
+        pointer-events: none;
+        z-index: 1;
+      `;
+
+      // Garante que o botão tenha position relative
+      const originalPosition = button.style.position;
+      if (getComputedStyle(button).position === 'static') {
+        button.style.position = 'relative';
+        button.style.overflow = 'hidden';
+      }
+
+      button.appendChild(ripple);
+
+      // Remove o ripple após a animação
+      setTimeout(() => {
+        ripple.remove();
+        // Restaura position se não havia antes
+        if (originalPosition === '') {
+          button.style.position = '';
+          button.style.overflow = '';
+        }
+      }, rippleDuration);
+    });
   }, [rippleColor, rippleDuration]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
@@ -92,11 +95,14 @@ export function useButtonInteraction(
     isPressedRef.current = true;
     const button = e.currentTarget;
 
-    // Efeito de scale (compressão)
-    button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-    button.style.transform = `scale(${scaleOnClick})`;
+    // Usar requestAnimationFrame para operações DOM pesadas
+    requestAnimationFrame(() => {
+      // Efeito de scale (compressão)
+      button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+      button.style.transform = `scale(${scaleOnClick})`;
+    });
 
-    // Cria ripple effect
+    // Cria ripple effect (já usa requestAnimationFrame internamente)
     createRipple(e);
   }, [scaleOnClick, scaleDuration, createRipple]);
 
@@ -106,9 +112,12 @@ export function useButtonInteraction(
     isPressedRef.current = false;
     const button = e.currentTarget;
 
-    // Restaura scale
-    button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-    button.style.transform = 'scale(1)';
+    // Usar requestAnimationFrame para operações DOM
+    requestAnimationFrame(() => {
+      // Restaura scale
+      button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+      button.style.transform = 'scale(1)';
+    });
   }, [scaleDuration]);
 
   const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
@@ -117,12 +126,18 @@ export function useButtonInteraction(
     isPressedRef.current = false;
     const button = e.currentTarget;
 
-    // Restaura scale se o mouse sair enquanto pressionado
-    button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-    button.style.transform = 'scale(1)';
+    // Usar requestAnimationFrame para operações DOM
+    requestAnimationFrame(() => {
+      // Restaura scale se o mouse sair enquanto pressionado
+      button.style.transition = `transform ${scaleDuration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+      button.style.transform = 'scale(1)';
+    });
   }, [scaleDuration]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    // Executar imediatamente - o originalOnClick já deve ser otimizado
+    // O uso de requestAnimationFrame nos outros handlers já garante que
+    // operações DOM pesadas não bloqueiem
     if (originalOnClick) {
       originalOnClick(e);
     }

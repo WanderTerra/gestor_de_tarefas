@@ -36,22 +36,27 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
   const handleSaveTutorialLink = async () => {
     if (!task || !onUpdateTutorialLink) return;
 
-    try {
-      setSaving(true);
-      const newLink = tutorialLink.trim() || null;
-      const data: UpdateTaskPayload = {
-        tutorialLink: newLink,
-      };
+    setSaving(true);
+    const newLink = tutorialLink.trim() || null;
+    const data: UpdateTaskPayload = {
+      tutorialLink: newLink,
+    };
 
-      await onUpdateTutorialLink(task.id, data);
-      // Atualizar o estado local com o valor salvo
-      setTutorialLink(newLink || '');
-      setIsEditingTutorialLink(false);
-    } catch {
-      // erro tratado pelo hook
-    } finally {
-      setSaving(false);
-    }
+    // Deslocar operação assíncrona para não bloquear o clique
+    setTimeout(async () => {
+      try {
+        await onUpdateTutorialLink(task.id, data);
+        // Atualizar o estado local com o valor salvo usando requestAnimationFrame
+        requestAnimationFrame(() => {
+          setTutorialLink(newLink || '');
+          setIsEditingTutorialLink(false);
+        });
+      } catch {
+        // erro tratado pelo hook
+      } finally {
+        setSaving(false);
+      }
+    }, 0);
   };
 
   if (!task) return null;
@@ -287,7 +292,10 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setIsEditingTutorialLink(true);
+                    // Deslocar atualização de estado
+                    requestAnimationFrame(() => {
+                      setIsEditingTutorialLink(true);
+                    });
                   }}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-2 py-1 rounded hover:bg-muted"
                   title="Editar link do tutorial"
@@ -302,8 +310,11 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setIsEditingTutorialLink(false);
-                    setTutorialLink(task.tutorialLink || '');
+                    // Deslocar atualizações de estado
+                    requestAnimationFrame(() => {
+                      setIsEditingTutorialLink(false);
+                      setTutorialLink(task.tutorialLink || '');
+                    });
                   }}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-2 py-1 rounded hover:bg-muted"
                   title="Cancelar edição"
@@ -361,8 +372,11 @@ const ViewTaskDialog: React.FC<ViewTaskDialogProps> = ({
                   <Button 
                     variant="outline" 
                     onClick={() => {
-                      setIsEditingTutorialLink(false);
-                      setTutorialLink(task.tutorialLink || '');
+                      // Deslocar atualizações de estado
+                      requestAnimationFrame(() => {
+                        setIsEditingTutorialLink(false);
+                        setTutorialLink(task.tutorialLink || '');
+                      });
                     }}
                     size="sm"
                     className="flex-1"
