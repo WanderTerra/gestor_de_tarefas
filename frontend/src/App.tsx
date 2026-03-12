@@ -319,6 +319,21 @@ const TaskApp: React.FC = () => {
       return false;
     }
     
+    // Para tarefas únicas (não recorrentes) com deadline, verificar se hoje é o dia do deadline ou depois
+    if (!t.isRecurring && t.deadline) {
+      const deadlineDate = new Date(t.deadline);
+      deadlineDate.setHours(0, 0, 0, 0);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Só mostrar se hoje for o dia do deadline ou depois (tarefas atrasadas)
+      if (deadlineDate > today) {
+        return false; // Deadline no futuro, não mostrar ainda
+      }
+      // Se deadline é hoje ou passou, mostrar
+    }
+    
     // Para tarefas recorrentes mensais (com recurringDayOfMonth), verificar se hoje é o dia correto
     if (t.isRecurring && 
         t.recurringDayOfMonth !== null && 
@@ -348,7 +363,7 @@ const TaskApp: React.FC = () => {
       }
     }
     
-    // Para outras tarefas, mostrar normalmente
+    // Para outras tarefas (sem deadline e sem recorrência), mostrar normalmente
     return true;
   });
 
