@@ -112,16 +112,20 @@ const TaskApp: React.FC = () => {
     });
   }, []);
 
-  // Relógio que atualiza a cada minuto para verificar horários limite
+  // Função helper para obter horário no timezone de Campo Grande (Mato Grosso do Sul)
+  const getCampoGrandeTime = (date: Date = new Date()): string => {
+    const cgDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+    return `${String(cgDate.getHours()).padStart(2, '0')}:${String(cgDate.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // Relógio que atualiza a cada minuto para verificar horários limite (usando timezone de Campo Grande)
   const [currentTime, setCurrentTime] = useState(() => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return getCampoGrandeTime();
   });
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+      setCurrentTime(getCampoGrandeTime());
     }, 30_000); // Atualiza a cada 30s
     return () => clearInterval(interval);
   }, []);
@@ -192,7 +196,7 @@ const TaskApp: React.FC = () => {
       if (task.isOverdue) {
         // Se é tarefa mensal, verificar se realmente deveria estar atrasada
         if (task.isRecurring && task.recurringDayOfMonth !== null && task.recurringDayOfMonth !== undefined) {
-          const today = new Date();
+          const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
           const todayDay = today.getDate();
           // Se não é o dia do mês, não está atrasada (mesmo que backend tenha marcado)
           if (todayDay !== task.recurringDayOfMonth) {
@@ -208,7 +212,7 @@ const TaskApp: React.FC = () => {
         
         // Se é tarefa semanal, verificar se hoje é um dos dias configurados
         if (task.isRecurring && task.recurringDays) {
-          const today = new Date();
+          const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
           const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
           const dayMap: Record<number, string> = {
             0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
@@ -237,10 +241,11 @@ const TaskApp: React.FC = () => {
       if (task.deadline) {
         try {
           const deadlineDate = new Date(task.deadline);
-          // Normalizar para meia-noite (local) para comparação de data apenas
+          // Normalizar para meia-noite (timezone de Campo Grande) para comparação de data apenas
           deadlineDate.setHours(0, 0, 0, 0);
           
-          const today = new Date();
+          const cgToday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+          const today = new Date(cgToday);
           today.setHours(0, 0, 0, 0);
           
           // Se o deadline é no futuro, não está atrasada
@@ -276,8 +281,8 @@ const TaskApp: React.FC = () => {
           task.recurringDayOfMonth !== undefined && 
           task.recurringDayOfMonth >= 1 && 
           task.recurringDayOfMonth <= 31) {
-        const today = new Date();
-        const todayDay = today.getDate();
+        const cgToday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+        const todayDay = cgToday.getDate();
         // Só considerar atrasada se hoje for o dia do mês especificado E o horário já passou
         if (todayDay === task.recurringDayOfMonth && task.timeLimit) {
           return currentTime >= task.timeLimit;
@@ -289,8 +294,8 @@ const TaskApp: React.FC = () => {
       // PRIORIDADE 4: Para tarefas recorrentes semanais (sem recurringDayOfMonth ou com valor inválido)
       // Verificar se hoje é um dos dias da semana configurados E o horário já passou
       if (task.isRecurring && task.timeLimit && task.recurringDays) {
-        const today = new Date();
-        const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+        const cgToday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+        const todayDayOfWeek = cgToday.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
         const dayMap: Record<number, string> = {
           0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
         };

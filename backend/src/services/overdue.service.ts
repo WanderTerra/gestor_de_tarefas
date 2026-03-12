@@ -4,6 +4,33 @@ import { isManagerRole } from '../middleware/auth.js';
 
 const ACTIVE_STATUSES = ['pending', 'in-progress', 'waiting', 'not-executed'];
 const SYSTEM_USER_ID = 1; // ID do sistema para auditoria automática
+const TIMEZONE = 'America/Campo_Grande'; // Mato Grosso do Sul (UTC-4)
+
+/**
+ * Obtém a data/hora atual no timezone de Campo Grande (Mato Grosso do Sul)
+ */
+function getCampoGrandeDate(date: Date = new Date()): Date {
+  return new Date(date.toLocaleString('en-US', { timeZone: TIMEZONE }));
+}
+
+/**
+ * Obtém o horário atual no formato HH:MM no timezone de Campo Grande
+ */
+function getCampoGrandeTime(date: Date = new Date()): string {
+  const cgDate = getCampoGrandeDate(date);
+  return `${String(cgDate.getHours()).padStart(2, '0')}:${String(cgDate.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Obtém a data de hoje (meia-noite) no timezone de Campo Grande
+ * Retorna uma data normalizada para comparação (sem horas/minutos/segundos)
+ */
+function getCampoGrandeToday(): Date {
+  const cgDate = getCampoGrandeDate();
+  // Criar nova data com apenas a parte de data (sem hora)
+  const today = new Date(cgDate.getFullYear(), cgDate.getMonth(), cgDate.getDate(), 0, 0, 0, 0);
+  return today;
+}
 
 export const overdueService = {
   /**
@@ -12,8 +39,7 @@ export const overdueService = {
    */
   async checkAndCreateAlerts(): Promise<number> {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getCampoGrandeToday();
 
       // Buscar tarefas ativas que foram atualizadas antes de hoje
       const overdueTasks = await prisma.task.findMany({
@@ -108,9 +134,8 @@ export const overdueService = {
   async checkTimeLimitOverdue(): Promise<number> {
     try {
       const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const currentTime = getCampoGrandeTime(now);
+      const today = getCampoGrandeToday();
 
       // Buscar tarefas ativas que têm timeLimit definido,
       // cujo horário já foi ultrapassado e ainda não estão marcadas como atrasadas
@@ -259,9 +284,8 @@ export const overdueService = {
   async clearFutureDeadlineOverdue(): Promise<number> {
     try {
       const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const currentTime = getCampoGrandeTime(now);
+      const today = getCampoGrandeToday();
 
       // Buscar tarefas únicas com deadline e isOverdue = true
       const tasksToCheck = await prisma.task.findMany({
@@ -325,9 +349,9 @@ export const overdueService = {
    */
   async clearMonthlyRecurringOverdue(): Promise<number> {
     try {
-      const today = new Date();
-      const todayDay = today.getDate();
-      const currentTime = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+      const cgToday = getCampoGrandeDate();
+      const todayDay = cgToday.getDate();
+      const currentTime = getCampoGrandeTime();
 
       // Buscar tarefas recorrentes mensais com isOverdue = true
       const tasksToCheck = await prisma.task.findMany({
@@ -480,9 +504,9 @@ export const overdueService = {
    * Verifica se hoje é um dia de recorrência válido para a tarefa
    */
   isTodayRecurringDay(task: { recurringDays: string | null; recurringDayOfMonth: number | null }): boolean {
-    const today = new Date();
-    const todayDayOfWeek = today.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
-    const todayDayOfMonth = today.getDate();
+    const cgToday = getCampoGrandeDate();
+    const todayDayOfWeek = cgToday.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+    const todayDayOfMonth = cgToday.getDate();
 
     // Mapear dia da semana numérico para string
     const dayMap: Record<number, string> = {
@@ -518,9 +542,8 @@ export const overdueService = {
   async clearIncorrectWeeklyRecurringOverdue(): Promise<number> {
     try {
       const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const currentTime = getCampoGrandeTime(now);
+      const today = getCampoGrandeToday();
 
       // Buscar tarefas recorrentes semanais que estão marcadas como atrasadas
       const weeklyRecurringTasks = await prisma.task.findMany({

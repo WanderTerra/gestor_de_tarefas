@@ -1,3 +1,7 @@
+// Configurar timezone para Mato Grosso do Sul (Campo Grande - UTC-4)
+// Isso garante que todas as operações de data/hora usem o timezone correto
+process.env.TZ = 'America/Campo_Grande';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

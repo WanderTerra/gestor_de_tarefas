@@ -145,8 +145,14 @@ export function useNotifications() {
         return;
       }
 
+      // Função helper para obter horário no timezone de Campo Grande
+      const getCampoGrandeTime = (date: Date = new Date()): string => {
+        const cgDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+        return `${String(cgDate.getHours()).padStart(2, '0')}:${String(cgDate.getMinutes()).padStart(2, '0')}`;
+      };
+      
       const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const currentTime = getCampoGrandeTime(now);
 
       // Primeira execução: apenas preencher estado anterior, sem notificar (evita spam ao abrir a página)
       if (!hasInitializedOverdueCheckRef.current) {
@@ -171,7 +177,8 @@ export function useNotifications() {
               // ignore
             }
           } else if (task.isRecurring && task.recurringDayOfMonth != null && task.recurringDayOfMonth >= 1 && task.recurringDayOfMonth <= 31) {
-            const todayDay = now.getDate();
+            const cgNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+            const todayDay = cgNow.getDate();
             if (todayDay === task.recurringDayOfMonth && task.timeLimit) {
               currentIsOverdue = task.timeLimit <= currentTime;
             }
@@ -203,7 +210,8 @@ export function useNotifications() {
           try {
             const deadlineDate = new Date(task.deadline);
             deadlineDate.setHours(0, 0, 0, 0);
-            const today = new Date();
+            const cgToday = new Date(now.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+            const today = new Date(cgToday);
             today.setHours(0, 0, 0, 0);
             
             if (deadlineDate.getTime() === today.getTime()) {
@@ -225,8 +233,8 @@ export function useNotifications() {
                  task.recurringDayOfMonth !== undefined && 
                  task.recurringDayOfMonth >= 1 && 
                  task.recurringDayOfMonth <= 31) {
-          const today = new Date();
-          const todayDay = today.getDate();
+          const cgToday = new Date(now.toLocaleString('en-US', { timeZone: 'America/Campo_Grande' }));
+          const todayDay = cgToday.getDate();
           // Só considerar atrasada se hoje for o dia do mês especificado E o horário já passou
           if (todayDay === task.recurringDayOfMonth && task.timeLimit) {
             currentIsOverdue = task.timeLimit <= currentTime;
