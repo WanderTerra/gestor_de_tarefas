@@ -543,7 +543,7 @@ export const overdueService = {
     try {
       const now = new Date();
       const currentTime = getCampoGrandeTime(now);
-      const today = getCampoGrandeToday();
+      const cgNow = getCampoGrandeDate(now);
 
       // Buscar tarefas recorrentes semanais que estão marcadas como atrasadas
       const weeklyRecurringTasks = await prisma.task.findMany({
@@ -563,7 +563,7 @@ export const overdueService = {
       const dayMap: Record<number, string> = {
         0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab',
       };
-      const todayDayOfWeek = now.getDay();
+      const todayDayOfWeek = cgNow.getDay();
       const todayDayName = dayMap[todayDayOfWeek];
 
       let clearedCount = 0;
