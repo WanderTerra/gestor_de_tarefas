@@ -182,7 +182,6 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ onBack, onNavigate }) => {
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [userIdFilter, setUserIdFilter] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
-  const showFullDetails = false; // mantido para compatibilidade (não usado na lista unificada)
   const pageSize = 25;
 
   const fetchLogs = useCallback(async (offset: number) => {
