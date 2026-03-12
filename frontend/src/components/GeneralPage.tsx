@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Loader2, AlertCircle, CalendarDays, Clock, CheckCircle2, Filter, Repeat,
-  Eye, Pencil, Trash2, ArrowRight, ClipboardList,
+  Eye, Pencil, Trash2, ArrowRight, ClipboardList, LayoutGrid, List,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi } from '@/services/api';
@@ -112,6 +112,7 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
   const [deleteConfirm, setDeleteConfirm] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [hoveredCardId, setHoveredCardId] = useState<number | null>(null);
+  const [taskViewMode, setTaskViewMode] = useState<'grid' | 'list'>('grid');
   const handleNavigate = useCallback((navPage: Page) => {
     if (navPage === 'general') {
       // Se já está na página geral, resetar para a view de usuários
@@ -644,9 +645,39 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                   </button>
                 </div>
               </div>
-              <h3 className="text-base font-bold text-slate-800">
-                {selectedUserName}
-              </h3>
+              <div className="flex items-center gap-4">
+                <h3 className="text-base font-bold text-slate-800">
+                  {selectedUserName}
+                </h3>
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      requestAnimationFrame(() => {
+                        window.scrollTo({ top: 0, behavior: 'auto' });
+                        setTaskViewMode('grid');
+                      });
+                    }}
+                    className={`p-2 rounded-md transition-colors ${taskViewMode === 'grid' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+                    title="Visualização em cards"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      requestAnimationFrame(() => {
+                        window.scrollTo({ top: 0, behavior: 'auto' });
+                        setTaskViewMode('list');
+                      });
+                    }}
+                    className={`p-2 rounded-md transition-colors ${taskViewMode === 'list' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+                    title="Visualização em lista"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Mostrar filtro de data apenas no modo 'completed' */}
@@ -680,8 +711,9 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
               <div className="space-y-8">
                 {mode === 'active' || mode === 'pending' || mode === 'overdue' ? (
                 // No modo 'active' (Todas as tarefas), 'pending' (Tarefas pendentes) ou 'overdue' (Tarefas atrasadas), exibir todas as tarefas sem agrupamento por data
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-                  {tasksFilteredByDate.map((task) => {
+                taskViewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                    {tasksFilteredByDate.map((task) => {
                       const config = statusConfig[task.status];
                       // Priorizar cor vermelha se a tarefa estiver atrasada
                       const shadowColorRGB = task.isOverdue ? '248, 113, 113' : getStatusColorRGB(task.status);
@@ -841,6 +873,56 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                       );
                     })}
                   </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {tasksFilteredByDate.map((task) => {
+                      const config = statusConfig[task.status];
+                      return (
+                        <div
+                          key={`task-${task.id}-${mode}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setViewTask(task)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewTask(task); } }}
+                          className="flex items-center gap-3 py-2.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                          style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                        >
+                          <Badge
+                            variant="outline"
+                            className="text-xs shrink-0"
+                            style={{
+                              background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`,
+                              border: `2px solid rgb(${getStatusColorRGB(task.status)})`,
+                              color: `rgb(${getStatusColorRGB(task.status)})`,
+                            }}
+                          >
+                            {config.label}
+                          </Badge>
+                          {task.isOverdue && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 shrink-0">Atrasado</span>
+                          )}
+                          <span className="flex-1 min-w-0 font-medium text-slate-800 truncate">{task.name}</span>
+                          {task.timeLimit && (
+                            <span className="text-sm text-slate-500 shrink-0 flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {task.timeLimit}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {isManager && (
+                              <>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setEditTask(task); }} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setTransferTask(task); }} title="Transferir"><ArrowRight className="h-3.5 w-3.5" /></Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(task); }} title="Excluir"><Trash2 className="h-3.5 w-3.5" /></Button>
+                              </>
+                            )}
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setViewTask(task); }} title="Ver detalhes"><Eye className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
               ) : (
                 // No modo 'completed' (Tarefas concluídas), manter agrupamento por data
                 groupedByDate.map(([dateLabel, dateTasks]) => (
@@ -853,8 +935,9 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                       <div className="flex-1 h-px bg-slate-200" />
                       <span className="text-xs text-slate-500">{dateTasks.length} tarefa{dateTasks.length !== 1 ? 's' : ''}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-                      {dateTasks.map((task) => {
+                    {taskViewMode === 'grid' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                        {dateTasks.map((task) => {
                         const config = statusConfig[task.status];
                         // Priorizar cor vermelha se a tarefa estiver atrasada
                         const shadowColorRGB = task.isOverdue ? '248, 113, 113' : getStatusColorRGB(task.status);
@@ -1016,6 +1099,56 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                         );
                       })}
                     </div>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        {dateTasks.map((task) => {
+                          const config = statusConfig[task.status];
+                          return (
+                            <div
+                              key={task.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setViewTask(task)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewTask(task); } }}
+                              className="flex items-center gap-3 py-2.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                            >
+                              <Badge
+                                variant="outline"
+                                className="text-xs shrink-0"
+                                style={{
+                                  background: `rgba(${getStatusColorRGB(task.status)}, 0.15)`,
+                                  border: `2px solid rgb(${getStatusColorRGB(task.status)})`,
+                                  color: `rgb(${getStatusColorRGB(task.status)})`,
+                                }}
+                              >
+                                {config.label}
+                              </Badge>
+                              {task.isOverdue && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 shrink-0">Atrasado</span>
+                              )}
+                              <span className="flex-1 min-w-0 font-medium text-slate-800 truncate">{task.name}</span>
+                              {task.timeLimit && (
+                                <span className="text-sm text-slate-500 shrink-0 flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  {task.timeLimit}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                {isManager && (
+                                  <>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setEditTask(task); }} title="Editar"><Pencil className="h-3.5 w-3.5" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setTransferTask(task); }} title="Transferir"><ArrowRight className="h-3.5 w-3.5" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(task); }} title="Excluir"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                  </>
+                                )}
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setViewTask(task); }} title="Ver detalhes"><Eye className="h-3.5 w-3.5" /></Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
