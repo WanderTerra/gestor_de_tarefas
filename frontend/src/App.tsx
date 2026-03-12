@@ -990,12 +990,14 @@ const TaskApp: React.FC = () => {
                           setHoveredCardId(task.id);
                           // Usar requestAnimationFrame para manipulação de estilo
                           requestAnimationFrame(() => {
+                            const target = e.currentTarget;
+                            if (!target) return;
                             if (isTaskOverdue(task)) {
-                              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)';
-                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                              target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)';
+                              target.style.border = '1px solid rgba(0, 0, 0, 0.1)';
                             } else {
-                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
-                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+                              target.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
+                              target.style.border = '1px solid rgba(0, 0, 0, 0.1)';
                             }
                           });
                         }
@@ -1005,12 +1007,14 @@ const TaskApp: React.FC = () => {
                           setHoveredCardId(null);
                           // Usar requestAnimationFrame para manipulação de estilo
                           requestAnimationFrame(() => {
+                            const target = e.currentTarget;
+                            if (!target) return;
                             if (isTaskOverdue(task)) {
-                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)';
-                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                              target.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04)';
+                              target.style.border = '1px solid rgba(0, 0, 0, 0.08)';
                             } else {
-                              e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.08)';
-                              e.currentTarget.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                              target.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.08)';
+                              target.style.border = '1px solid rgba(0, 0, 0, 0.08)';
                             }
                           });
                         }
