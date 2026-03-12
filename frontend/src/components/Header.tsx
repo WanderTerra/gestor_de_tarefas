@@ -58,13 +58,13 @@ const NavButton: React.FC<{
           : 'none',
       }}
       onMouseEnter={(e) => {
-        if (!isActive) {
+        if (!isActive && e.currentTarget) {
           e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
           e.currentTarget.style.color = 'rgba(15, 23, 42, 0.95)';
         }
       }}
       onMouseLeave={(e) => {
-        if (!isActive) {
+        if (!isActive && e.currentTarget) {
           e.currentTarget.style.background = 'transparent';
           e.currentTarget.style.color = 'rgba(30, 41, 59, 0.85)';
         }
@@ -290,13 +290,17 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
                   background: 'transparent',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                  if (e.currentTarget) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
                     e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                  }}
-                  onMouseLeave={(e) => {
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (e.currentTarget) {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.border = 'none';
-                  }}
+                  }
+                }}
                 >
                   <Bell className="w-5 h-5" style={{ color: 'rgba(0, 0, 0, 0.7)' }} />
                 </button>
@@ -417,10 +421,10 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
                                 cursor: 'pointer',
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
+                                if (e.currentTarget) e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
+                                if (e.currentTarget) e.currentTarget.style.background = 'transparent';
                               }}
                               onClick={async () => {
                                 // Navegar para a página de tarefas
@@ -519,12 +523,16 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, tasks: _tasks 
                   color: 'rgba(185, 28, 28, 0.9)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(220, 38, 38, 0.12)';
-                  e.currentTarget.style.color = 'rgba(185, 28, 28, 1)';
+                  if (e.currentTarget) {
+                    e.currentTarget.style.background = 'rgba(220, 38, 38, 0.12)';
+                    e.currentTarget.style.color = 'rgba(185, 28, 28, 1)';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'rgba(185, 28, 28, 0.9)';
+                  if (e.currentTarget) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'rgba(185, 28, 28, 0.9)';
+                  }
                 }}
               >
                 <LogOut className="w-4 h-4 shrink-0" />
