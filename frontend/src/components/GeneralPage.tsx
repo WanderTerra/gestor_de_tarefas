@@ -683,13 +683,18 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
                   {tasksFilteredByDate.map((task) => {
                       const config = statusConfig[task.status];
+                      const statusColorRGB = getStatusColorRGB(task.status);
                       return (
                         <Card 
                           key={`task-${task.id}-${mode}`}
                           data-task-id={task.id}
                           data-task-status={task.status}
                           className="h-full flex flex-col transition-all duration-200 group" 
-                          style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}
+                          style={{ 
+                            background: '#fff', 
+                            border: '1px solid rgba(0, 0, 0, 0.1)', 
+                            boxShadow: `0 4px 12px rgba(${statusColorRGB}, 0.3), 0 2px 4px rgba(${statusColorRGB}, 0.2), 0 1px 3px rgba(0,0,0,0.06)`
+                          }}
                           onMouseEnter={() => setHoveredCardId(task.id)}
                           onMouseLeave={() => setHoveredCardId(null)}
                         >
@@ -850,11 +855,16 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
                       {dateTasks.map((task) => {
                         const config = statusConfig[task.status];
+                        const statusColorRGB = getStatusColorRGB(task.status);
                         return (
                           <Card 
                             key={task.id} 
                             className="h-full flex flex-col transition-all duration-200 group" 
-                            style={{ background: '#fff', border: '1px solid rgba(0, 0, 0, 0.1)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)' }}
+                            style={{ 
+                              background: '#fff', 
+                              border: '1px solid rgba(0, 0, 0, 0.1)', 
+                              boxShadow: `0 4px 12px rgba(${statusColorRGB}, 0.3), 0 2px 4px rgba(${statusColorRGB}, 0.2), 0 1px 3px rgba(0,0,0,0.06)`
+                            }}
                             onMouseEnter={() => setHoveredCardId(task.id)}
                             onMouseLeave={() => setHoveredCardId(null)}
                           >
