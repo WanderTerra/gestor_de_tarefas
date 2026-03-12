@@ -535,11 +535,33 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
 
             {!loading && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {userListWithCounts.map((u) => (
+                {userListWithCounts.map((u) => {
+                  // Obter cor RGB baseada no modo atual
+                  const getModeColorRGB = (): string => {
+                    switch (mode) {
+                      case 'completed':
+                        return '74, 222, 128'; // verde
+                      case 'active':
+                        return '96, 165, 250'; // azul
+                      case 'pending':
+                        return '250, 204, 21'; // amarelo
+                      case 'overdue':
+                        return '248, 113, 113'; // vermelho
+                      default:
+                        return '148, 163, 184'; // cinza
+                    }
+                  };
+                  const modeColorRGB = getModeColorRGB();
+                  
+                  return (
                   <Card
                     key={u.id ?? 'unassigned'}
-                    className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-md"
-                    style={{ background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                    className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg"
+                    style={{ 
+                      background: '#fff', 
+                      border: '1px solid #e2e8f0', 
+                      boxShadow: `0 4px 12px rgba(${modeColorRGB}, 0.3), 0 2px 4px rgba(${modeColorRGB}, 0.2), 0 1px 3px rgba(0,0,0,0.06)`
+                    }}
                   >
                     <CardHeader className="pb-2 pt-4 px-4">
                       <div className="flex items-start justify-between gap-2">
@@ -565,7 +587,8 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                       </Button>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
 
