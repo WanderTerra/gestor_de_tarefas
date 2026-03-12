@@ -478,6 +478,13 @@ const TaskApp: React.FC = () => {
     }
   }, [isManager]);
 
+  // Função para calcular tempo total estimado de todas as tarefas de um usuário
+  const calculateTotalEstimatedTime = (tasks: Task[]): number => {
+    return tasks.reduce((total, task) => {
+      return total + (task.estimatedTime || 0);
+    }, 0);
+  };
+
   useEffect(() => {
     if (!loading && tasks.length >= 0) {
       overdueApi.getActive()
@@ -988,9 +995,22 @@ const TaskApp: React.FC = () => {
                         {userLabel}
                       </span>
                       <div className="flex-1 min-w-0 h-px bg-slate-200" />
-                      <span className="shrink-0 text-sm text-slate-600">
-                        {userTasks.length} tarefa{userTasks.length !== 1 ? 's' : ''}
-                      </span>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-sm text-slate-600">
+                          {userTasks.length} tarefa{userTasks.length !== 1 ? 's' : ''}
+                        </span>
+                        {calculateTotalEstimatedTime(userTasks) > 0 && (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-slate-500" />
+                              <span className="text-sm font-medium text-slate-700">
+                                {formatEstimatedTime(calculateTotalEstimatedTime(userTasks))}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
 

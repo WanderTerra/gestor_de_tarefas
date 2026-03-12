@@ -55,6 +55,13 @@ function formatEstimatedTime(minutes: number | null | undefined): string {
   }
 }
 
+/** Calcula o tempo total estimado de todas as tarefas */
+function calculateTotalEstimatedTime(tasks: Task[]): number {
+  return tasks.reduce((total, task) => {
+    return total + (task.estimatedTime || 0);
+  }, 0);
+}
+
 /** Retorna "dd/mm/aaaa" para hoje */
 function todayBR(): string {
   const d = new Date();
@@ -510,21 +517,39 @@ const CompletedTasksPage: React.FC<CompletedTasksPageProps> = ({ onBack, onNavig
                 {!isRoleCollapsed && users.map(({ userLabel, userId, dateGroups }) => (
                   <div key={userId || 'no-user'} className={isManager ? "mb-8 ml-4" : "mb-8"}>
                     {/* Separador de usuário (apenas para gestores) */}
-                    {isManager && userLabel && (
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="flex items-center gap-2 shrink-0 w-10 h-10 rounded-full border border-slate-200/80 bg-slate-50 items-center justify-center">
-                          <UserIcon className="w-5 h-5 text-slate-600" />
+                    {isManager && userLabel && (() => {
+                      const allUserTasks = dateGroups.flatMap(([, tasks]) => tasks);
+                      const totalTime = calculateTotalEstimatedTime(allUserTasks);
+                      const totalTasks = dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0);
+                      return (
+                        <div className="flex items-center gap-3 mb-6">
+                          <div className="flex items-center gap-2 shrink-0 w-10 h-10 rounded-full border border-slate-200/80 bg-slate-50 items-center justify-center">
+                            <UserIcon className="w-5 h-5 text-slate-600" />
+                          </div>
+                          <div className="flex-1 h-px bg-slate-200 min-w-0" />
+                          <span className="px-4 py-1.5 shrink-0 text-base font-bold text-black bg-slate-100/80 rounded-md border border-slate-200/80">
+                            {userLabel}
+                          </span>
+                          <div className="flex-1 h-px bg-slate-200 min-w-0" />
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-sm text-slate-600 font-medium">
+                              {totalTasks} tarefa{totalTasks !== 1 ? 's' : ''}
+                            </span>
+                            {totalTime > 0 && (
+                              <>
+                                <span className="text-slate-300">•</span>
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5 text-slate-500" />
+                                  <span className="text-sm font-medium text-slate-700">
+                                    {formatEstimatedTime(totalTime)}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 h-px bg-slate-200 min-w-0" />
-                        <span className="px-4 py-1.5 shrink-0 text-base font-bold text-black bg-slate-100/80 rounded-md border border-slate-200/80">
-                          {userLabel}
-                        </span>
-                        <div className="flex-1 h-px bg-slate-200 min-w-0" />
-                        <span className="text-sm text-slate-600 font-medium shrink-0">
-                          {dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0)} tarefa{dateGroups.reduce((sum, [, tasks]) => sum + tasks.length, 0) !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Grupos por data */}
                     {dateGroups.map(([dateLabel, dateTasks]) => (
