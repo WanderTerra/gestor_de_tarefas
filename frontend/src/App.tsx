@@ -9,7 +9,7 @@ import {
   Plus, Loader2, AlertCircle,
   CheckCircle2, Clock, Pencil, Trash2, ArrowRight,
   X, User as UserIcon, Repeat, Filter, Building2, ChevronDown, Eye,
-  LayoutGrid, List,
+  LayoutGrid, List, Info,
 } from 'lucide-react';
 import { TaskStatus, statusConfig } from '@/types/task';
 import { User, getRoleLabel } from '@/types/user';
@@ -1263,6 +1263,17 @@ const TaskApp: React.FC = () => {
                           </Badge>
                         )}
 
+                        {/* Motivo (quando status requer motivo) */}
+                        {task.reason && (task.status === 'waiting' || task.status === 'not-executed') && (
+                          <div 
+                            className="flex items-start gap-1.5 text-xs text-muted-foreground mt-1"
+                            title={task.reason}
+                          >
+                            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: `rgb(${getStatusColorRGB(task.status)})` }} />
+                            <span className="line-clamp-2 leading-snug flex-1">{task.reason}</span>
+                          </div>
+                        )}
+
                         {/* Espaçador flexível */}
                         <div className="flex-1 min-h-2" />
 
@@ -1403,7 +1414,15 @@ const TaskApp: React.FC = () => {
                           {isTaskOverdue(task) && (
                             <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 shrink-0">Atrasado</span>
                           )}
-                          <span className="flex-1 min-w-0 font-medium text-slate-800 truncate">{task.name}</span>
+                          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <span className="font-medium text-slate-800 truncate">{task.name}</span>
+                            {task.reason && (task.status === 'waiting' || task.status === 'not-executed') && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground" title={task.reason}>
+                                <Info className="w-3 h-3 shrink-0" style={{ color: `rgb(${getStatusColorRGB(task.status)})` }} />
+                                <span className="truncate">{task.reason}</span>
+                              </div>
+                            )}
+                          </div>
                           {task.assignedTo && isManager && (
                             <span className="text-sm text-slate-600 truncate max-w-[140px] hidden sm:inline">{task.assignedTo.name}</span>
                           )}

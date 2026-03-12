@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Loader2, ArrowLeft, CheckCircle2, Clock, AlertCircle, XCircle, PlayCircle,
-  Pencil, Trash2, ChevronDown, Eye, LayoutGrid, List,
+  Pencil, Trash2, ChevronDown, Eye, LayoutGrid, List, Info,
 } from 'lucide-react';
 import { Task, statusConfig, TaskStatus } from '@/types/task';
 import { taskApi, userApi, UpdateTaskPayload } from '@/services/api';
@@ -428,6 +428,17 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
                                 Prazo: {new Date(task.deadline).toLocaleDateString('pt-BR')}
                               </p>
                             )}
+
+                            {/* Motivo (quando status requer motivo) */}
+                            {task.reason && (task.status === 'waiting' || task.status === 'not-executed') && (
+                              <div 
+                                className="flex items-start gap-1.5 text-xs text-muted-foreground mt-1"
+                                title={task.reason}
+                              >
+                                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: `rgb(${getStatusColorRGB(task.status)})` }} />
+                                <span className="line-clamp-2 leading-snug flex-1">{task.reason}</span>
+                              </div>
+                            )}
                           </div>
                         </Card>
                       ))}
@@ -458,7 +469,15 @@ const AllTasksPage: React.FC<AllTasksPageProps> = ({ onBack, onNavigate }) => {
                           {task.isOverdue && (
                             <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 shrink-0">Atrasado</span>
                           )}
-                          <span className="flex-1 min-w-0 font-medium text-slate-800 truncate">{task.name}</span>
+                          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <span className="font-medium text-slate-800 truncate">{task.name}</span>
+                            {task.reason && (task.status === 'waiting' || task.status === 'not-executed') && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground" title={task.reason}>
+                                <Info className="w-3 h-3 shrink-0" style={{ color: `rgb(${getStatusColorRGB(task.status)})` }} />
+                                <span className="truncate">{task.reason}</span>
+                              </div>
+                            )}
+                          </div>
                           {task.timeLimit && (
                             <span className="text-sm text-slate-500 shrink-0 flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
