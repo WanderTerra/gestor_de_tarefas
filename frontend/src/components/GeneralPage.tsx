@@ -470,6 +470,34 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
               {mode === 'completed' ? 'Concluídas' : mode === 'active' ? 'Ativas' : mode === 'pending' ? 'Pendentes' : 'Atrasadas'}
             </Badge>
           </div>
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: 'auto' });
+                  setTaskViewMode('grid');
+                });
+              }}
+              className={`p-2 rounded-md transition-colors ${taskViewMode === 'grid' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+              title="Visualização em cards"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: 'auto' });
+                  setTaskViewMode('list');
+                });
+              }}
+              className={`p-2 rounded-md transition-colors ${taskViewMode === 'list' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+              title="Visualização em lista"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -535,62 +563,107 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
             )}
 
             {!loading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {userListWithCounts.map((u) => {
-                  // Obter cor RGB baseada no modo atual
-                  const getModeColorRGB = (): string => {
-                    switch (mode) {
-                      case 'completed':
-                        return '74, 222, 128'; // verde
-                      case 'active':
-                        return '96, 165, 250'; // azul
-                      case 'pending':
-                        return '250, 204, 21'; // amarelo
-                      case 'overdue':
-                        return '248, 113, 113'; // vermelho
-                      default:
-                        return '148, 163, 184'; // cinza
-                    }
-                  };
-                  const modeColorRGB = getModeColorRGB();
-                  
-                  return (
-                  <Card
-                    key={u.id ?? 'unassigned'}
-                    className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg"
-                    style={{ 
-                      background: '#fff', 
-                      border: '1px solid #e2e8f0', 
-                      boxShadow: `0 4px 12px rgba(${modeColorRGB}, 0.3), 0 2px 4px rgba(${modeColorRGB}, 0.2), 0 1px 3px rgba(0,0,0,0.06)`
-                    }}
-                  >
-                    <CardHeader className="pb-2 pt-4 px-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base font-semibold leading-tight line-clamp-2 flex-1 text-slate-800">
-                          {u.name}
-                        </CardTitle>
-                        <Badge variant="outline" className="shrink-0 text-xs" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}>
+              taskViewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {userListWithCounts.map((u) => {
+                    // Obter cor RGB baseada no modo atual
+                    const getModeColorRGB = (): string => {
+                      switch (mode) {
+                        case 'completed':
+                          return '74, 222, 128'; // verde
+                        case 'active':
+                          return '96, 165, 250'; // azul
+                        case 'pending':
+                          return '250, 204, 21'; // amarelo
+                        case 'overdue':
+                          return '248, 113, 113'; // vermelho
+                        default:
+                          return '148, 163, 184'; // cinza
+                      }
+                    };
+                    const modeColorRGB = getModeColorRGB();
+                    
+                    return (
+                    <Card
+                      key={u.id ?? 'unassigned'}
+                      className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg"
+                      style={{ 
+                        background: '#fff', 
+                        border: '1px solid #e2e8f0', 
+                        boxShadow: `0 4px 12px rgba(${modeColorRGB}, 0.3), 0 2px 4px rgba(${modeColorRGB}, 0.2), 0 1px 3px rgba(0,0,0,0.06)`
+                      }}
+                    >
+                      <CardHeader className="pb-2 pt-4 px-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base font-semibold leading-tight line-clamp-2 flex-1 text-slate-800">
+                            {u.name}
+                          </CardTitle>
+                          <Badge variant="outline" className="shrink-0 text-xs" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}>
+                            {u.role === 'unassigned' ? 'Sem atribuição' : getRoleLabel(u.role)}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 flex flex-col pt-0 px-4 pb-4">
+                        <p className="text-sm text-slate-600 mb-3">{u.taskCount} tarefa{u.taskCount !== 1 ? 's' : ''}</p>
+                        <div className="flex-1 min-h-2" />
+                        <Button
+                          onClick={() => { setSelectedUser(u); setView('detail'); }}
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Visualizar
+                        </Button>
+                      </CardContent>
+                    </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {userListWithCounts.map((u) => {
+                    return (
+                      <div
+                        key={u.id ?? 'unassigned'}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => { setSelectedUser(u); setView('detail'); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedUser(u); setView('detail'); } }}
+                        className="flex items-center gap-3 py-2.5 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                      >
+                        <Badge
+                          variant="outline"
+                          className="text-xs shrink-0"
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#475569',
+                          }}
+                        >
                           {u.role === 'unassigned' ? 'Sem atribuição' : getRoleLabel(u.role)}
                         </Badge>
+                        <span className="flex-1 min-w-0 font-medium text-slate-800 truncate">{u.name}</span>
+                        <span className="text-sm text-slate-600 shrink-0">{u.taskCount} tarefa{u.taskCount !== 1 ? 's' : ''}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedUser(u);
+                            setView('detail');
+                          }}
+                          className="h-7 w-7 p-0 shrink-0"
+                          title="Visualizar"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 flex flex-col pt-0 px-4 pb-4">
-                      <p className="text-sm text-slate-600 mb-3">{u.taskCount} tarefa{u.taskCount !== 1 ? 's' : ''}</p>
-                      <div className="flex-1 min-h-2" />
-                      <Button
-                        onClick={() => { setSelectedUser(u); setView('detail'); }}
-                        variant="outline"
-                        size="sm"
-                        className="w-full gap-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Visualizar
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )
             )}
 
             {!loading && userListWithCounts.length === 0 && (
@@ -645,39 +718,9 @@ const GeneralPage: React.FC<GeneralPageProps> = ({ onBack, onNavigate }) => {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <h3 className="text-base font-bold text-slate-800">
-                  {selectedUserName}
-                </h3>
-                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      requestAnimationFrame(() => {
-                        window.scrollTo({ top: 0, behavior: 'auto' });
-                        setTaskViewMode('grid');
-                      });
-                    }}
-                    className={`p-2 rounded-md transition-colors ${taskViewMode === 'grid' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
-                    title="Visualização em cards"
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      requestAnimationFrame(() => {
-                        window.scrollTo({ top: 0, behavior: 'auto' });
-                        setTaskViewMode('list');
-                      });
-                    }}
-                    className={`p-2 rounded-md transition-colors ${taskViewMode === 'list' ? 'bg-slate-200 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
-                    title="Visualização em lista"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <h3 className="text-base font-bold text-slate-800">
+                {selectedUserName}
+              </h3>
             </div>
 
             {/* Mostrar filtro de data apenas no modo 'completed' */}
